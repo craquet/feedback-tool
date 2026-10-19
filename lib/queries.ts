@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import type { AppDb } from "../db/client";
-import { feedback, services, type FeedbackStatus } from "../db/schema";
+import { feedback, services, type FeedbackStatus, type WebhookFormat } from "../db/schema";
+import { deleteScreenshot } from "./storage";
 
 export type Service = typeof services.$inferSelect;
 export type FeedbackRow = typeof feedback.$inferSelect;
@@ -92,6 +93,26 @@ export function setFeedbackStatus(
   db.update(feedback).set({ status }).where(eq(feedback.id, id)).run();
 }
 
+export function deleteFeedback(db: AppDb, id: number): void {
+  db.delete(feedback).where(eq(feedback.id, id)).run();
+}
+
+export function deleteFeedbackWithScreenshot(
+  db: AppDb,
+  id: number,
+  rootDir: string,
+): void {
+  const row = db
+    .select({ screenshotPath: feedback.screenshotPath })
+    .from(feedback)
+    .where(eq(feedback.id, id))
+    .all()[0];
+  if (row?.screenshotPath) {
+    deleteScreenshot(rootDir, row.screenshotPath);
+  }
+  deleteFeedback(db, id);
+}
+
 export type CreateServiceResult =
   | { ok: true; service: Service }
   | { ok: false; error: string };
@@ -123,7 +144,13 @@ export function createService(
 export function updateService(
   db: AppDb,
   id: number,
-  patch: { name?: string; webhookUrl?: string | null },
+  patch: {
+    name?: string;
+    webhookUrl?: string | null;
+    webhookFormat?: WebhookFormat;
+    acceptingReports?: boolean;
+    acceptingScreenshots?: boolean;
+  },
 ): void {
   db.update(services).set(patch).where(eq(services.id, id)).run();
 }

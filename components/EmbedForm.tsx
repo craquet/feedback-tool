@@ -1,9 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { CircleCheckIcon, LockIcon, SendIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface EmbedFormProps {
   embedKey: string;
+  acceptingReports: boolean;
+  acceptingScreenshots: boolean;
 }
 
 type SubmitState =
@@ -12,7 +24,11 @@ type SubmitState =
   | { status: "success" }
   | { status: "error"; message: string };
 
-export function EmbedForm({ embedKey }: EmbedFormProps) {
+export function EmbedForm({
+  embedKey,
+  acceptingReports,
+  acceptingScreenshots,
+}: EmbedFormProps) {
   const [state, setState] = useState<SubmitState>({ status: "idle" });
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -45,12 +61,27 @@ export function EmbedForm({ embedKey }: EmbedFormProps) {
     }
   }
 
+  if (!acceptingReports) {
+    return (
+      <div className="p-6 text-center" role="status">
+        <LockIcon className="mx-auto size-10" aria-hidden />
+        <p className="mt-2 font-medium">
+          Feedback is temporarily unavailable
+        </p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          This service is not accepting feedback right now. Please try again
+          later.
+        </p>
+      </div>
+    );
+  }
+
   if (state.status === "success") {
     return (
       <div className="p-6 text-center" role="status">
-        <p className="text-3xl">✓</p>
+        <CircleCheckIcon className="mx-auto size-10 text-primary" aria-hidden />
         <p className="mt-2 font-medium">Thanks for your feedback!</p>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="text-muted-foreground mt-1 text-sm">
           It has been sent to the team.
         </p>
       </div>
@@ -58,57 +89,60 @@ export function EmbedForm({ embedKey }: EmbedFormProps) {
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-3 p-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="p-4">
       <input type="hidden" name="embedKey" value={embedKey} />
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="fb-message">Feedback</FieldLabel>
+          <Textarea
+            id="fb-message"
+            name="message"
+            required
+            maxLength={5000}
+            rows={4}
+            placeholder="What went wrong? What could be better?"
+          />
+        </Field>
 
-      <label htmlFor="fb-message" className="text-sm font-medium">
-        Feedback
-      </label>
-      <textarea
-        id="fb-message"
-        name="message"
-        required
-        maxLength={5000}
-        rows={4}
-        placeholder="What went wrong? What could be better?"
-        className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200 dark:border-neutral-700 dark:bg-neutral-900"
-      />
+        <Field>
+          <FieldLabel htmlFor="fb-email">
+            Email <span className="font-normal opacity-60">(optional, if you want a reply)</span>
+          </FieldLabel>
+          <Input id="fb-email" name="email" type="email" placeholder="you@example.com" />
+        </Field>
 
-      <label htmlFor="fb-email" className="text-sm font-medium">
-        Email <span className="font-normal text-neutral-500">(optional, if you want a reply)</span>
-      </label>
-      <input
-        id="fb-email"
-        name="email"
-        type="email"
-        placeholder="you@example.com"
-        className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200 dark:border-neutral-700 dark:bg-neutral-900"
-      />
+        {acceptingScreenshots ? (
+          <Field>
+            <FieldLabel htmlFor="fb-screenshot">
+              Screenshot <span className="font-normal opacity-60">(optional, max 5 MB)</span>
+            </FieldLabel>
+            <Input
+              id="fb-screenshot"
+              name="screenshot"
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+            />
+            <FieldDescription>PNG, JPEG, GIF or WebP.</FieldDescription>
+          </Field>
+        ) : null}
 
-      <label htmlFor="fb-screenshot" className="text-sm font-medium">
-        Screenshot <span className="font-normal text-neutral-500">(optional, max 5 MB)</span>
-      </label>
-      <input
-        id="fb-screenshot"
-        name="screenshot"
-        type="file"
-        accept="image/png,image/jpeg,image/gif,image/webp"
-        className="text-sm file:mr-2 file:rounded-md file:border-0 file:bg-neutral-200 file:px-3 file:py-1.5 file:text-sm dark:file:bg-neutral-800"
-      />
+        {state.status === "error" ? (
+          <p className="text-destructive text-sm" role="alert">
+            {state.message}
+          </p>
+        ) : null}
 
-      {state.status === "error" ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          {state.message}
-        </p>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={state.status === "submitting"}
-        className="mt-1 rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300"
-      >
-        {state.status === "submitting" ? "Sending…" : "Send feedback"}
-      </button>
+        <Button type="submit" disabled={state.status === "submitting"}>
+          {state.status === "submitting" ? (
+            "Sending…"
+          ) : (
+            <>
+              <SendIcon data-icon="inline-start" />
+              Send feedback
+            </>
+          )}
+        </Button>
+      </FieldGroup>
     </form>
   );
 }

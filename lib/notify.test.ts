@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDb, type Db } from "../db/client";
 import { notificationLog, services, feedback } from "../db/schema";
-import { sendFeedbackNotification } from "./notify";
+import {
+  sendFeedbackNotification,
+  buildFeedbackBody,
+  buildTestBody,
+  type TeamsCardMessage,
+} from "./notify";
 
 describe("sendFeedbackNotification", () => {
   let db: Db;
@@ -143,5 +148,110 @@ describe("sendFeedbackNotification", () => {
     const logs = db.db.select().from(notificationLog).all();
     expect(logs.length).toBe(2);
     expect(logs.every((l) => !l.ok)).toBe(true);
+  });
+});
+
+describe("webhook payload builders", () => {
+  const baseFeedback = {
+    id: 7,
+    message: "The export button is broken",
+    email: "jane@example.com",
+    pageUrl: "https://app.example.com/reports",
+    screenshotPath: null,
+    createdAt: new Date(2026, 0, 1),
+  };
+
+  it("sends a Microsoft Teams adaptive card when the format is microsoft-teams", async () => {
+    const localDb = createDb(":memory:");
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+
+    await sendFeedbackNotification({
+      db: localDb.db,
+      fetchImpl,
+      format: "microsoft-teams",
+      webhookUrl: "https://hooks.example.com/flow",
+      adminUrl: "https://feedback.example.com/admin/app-x/7",
+      feedback: baseFeedback,
+      serviceName: "App X",
+    });
+
+    const [, init] = fetchImpl.mock.calls[0];
+    const payload: TeamsCardMessage = JSON.parse(init.body);
+
+    expect(payload.type).toBe("message");
+    expect(payload.attachments).toHaveLength(1);
+    const attachment = payload.attachments[0];
+    expect(attachment.contentType).toBe("application/vnd.microsoft.card.adaptive");
+
+    const card = attachment.content;
+    expect(card.type).toBe("AdaptiveCard");
+    expect(card.version).toBe("1.4");
+
+    expect(card.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "TextBlock",
+          text: expect.stringContaining("App X"),
+        }),
+        expect.objectContaining({
+          type: "TextBlock",
+          text: "The export button is broken",
+        }),
+        expect.objectContaining({
+          type: "FactSet",
+          facts: expect.arrayContaining([
+            expect.objectContaining({ value: "jane@example.com" }),
+            expect.objectContaining({ value: "https://app.example.com/reports" }),
+          ]),
+        }),
+      ]),
+    );
+
+    expect(card.actions).toEqual([
+      expect.objectContaining({
+        type: "Action.OpenUrl",
+        title: "Open in admin",
+        url: "https://feedback.example.com/admin/app-x/7",
+      }),
+    ]);
+    localDb.sqlite.close();
+  });
+
+  it("omits email and page facts when they are absent", () => {
+    const body: TeamsCardMessage = JSON.parse(
+      buildFeedbackBody("microsoft-teams", {
+        serviceName: "App X",
+        adminUrl: "https://feedback.example.com/admin/app-x/7",
+        feedback: { ...baseFeedback, email: null, pageUrl: null },
+      }),
+    );
+    expect(
+      body.attachments[0].content.body.find((b) => b.type === "FactSet"),
+    ).toBeUndefined();
+  });
+
+  it("builds a flat payload for the generic format", () => {
+    const body = JSON.parse(
+      buildFeedbackBody("generic", {
+        serviceName: "App X",
+        adminUrl: "https://feedback.example.com/admin/app-x/7",
+        feedback: baseFeedback,
+      }),
+    ) as Record<string, unknown>;
+    expect(body.message).toBe("The export button is broken");
+    expect(body.attachments).toBeUndefined();
+  });
+
+  it("builds a test payload with the requested format", () => {
+    const generic = JSON.parse(
+      buildTestBody("generic", { serviceName: "App X", message: "Test notification" }),
+    ) as Record<string, unknown>;
+    expect(generic).toEqual({ test: true, serviceName: "App X", message: "Test notification" });
+
+    const teams: TeamsCardMessage = JSON.parse(
+      buildTestBody("microsoft-teams", { serviceName: "App X", message: "Test notification" }),
+    );
+    expect(teams.attachments[0].content.type).toBe("AdaptiveCard");
+    expect(teams.attachments[0].contentType).toBe("application/vnd.microsoft.card.adaptive");
   });
 });

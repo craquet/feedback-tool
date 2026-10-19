@@ -1,5 +1,5 @@
 import type { AppDb } from "../db/client";
-import { notificationLog } from "../db/schema";
+import { notificationLog, type WebhookFormat } from "../db/schema";
 
 export interface FeedbackNotificationPayload {
   id: number;
@@ -14,9 +14,122 @@ export interface SendFeedbackNotificationArgs {
   db: AppDb;
   fetchImpl?: typeof fetch;
   webhookUrl: string;
+  format?: WebhookFormat;
   adminUrl: string;
   serviceName: string;
   feedback: FeedbackNotificationPayload;
+}
+
+interface WebhookContentData {
+  serviceName: string;
+  adminUrl: string;
+  feedback: FeedbackNotificationPayload;
+}
+
+export interface TeamsCardMessage {
+  type: "message";
+  attachments: Array<{
+    contentType: string;
+    contentUrl: null;
+    content: {
+      type: "AdaptiveCard";
+      $schema: string;
+      version: string;
+      body: Array<
+        | { type: "TextBlock"; text: string; weight?: string; size?: string; wrap?: boolean }
+        | { type: "FactSet"; facts: Array<{ title: string; value: string }> }
+      >;
+      actions?: Array<{ type: "Action.OpenUrl"; title: string; url: string }>;
+    };
+  }>;
+}
+
+export function buildFeedbackBody(
+  format: WebhookFormat,
+  data: WebhookContentData,
+): string {
+  if (format === "microsoft-teams") {
+    const facts: Array<{ title: string; value: string }> = [];
+    if (data.feedback.email) {
+      facts.push({ title: "Email", value: data.feedback.email });
+    }
+    if (data.feedback.pageUrl) {
+      facts.push({ title: "Page URL", value: data.feedback.pageUrl });
+    }
+    return JSON.stringify(
+      adaptiveCardMessage({
+        title: `New feedback for ${data.serviceName}`,
+        message: data.feedback.message,
+        facts,
+        actions: [
+          { type: "Action.OpenUrl", title: "Open in admin", url: data.adminUrl },
+        ],
+      }),
+    );
+  }
+
+  return JSON.stringify({
+    serviceName: data.serviceName,
+    feedbackId: data.feedback.id,
+    message: data.feedback.message,
+    email: data.feedback.email,
+    pageUrl: data.feedback.pageUrl,
+    hasScreenshot: data.feedback.screenshotPath !== null,
+    createdAt: data.feedback.createdAt.toISOString(),
+    adminUrl: data.adminUrl,
+  });
+}
+
+export function buildTestBody(
+  format: WebhookFormat,
+  data: { serviceName: string; message: string },
+): string {
+  if (format === "microsoft-teams") {
+    return JSON.stringify(
+      adaptiveCardMessage({
+        title: `Test notification for ${data.serviceName}`,
+        message: data.message,
+        facts: [],
+        actions: [],
+      }),
+    );
+  }
+  return JSON.stringify({ test: true, ...data });
+}
+
+function adaptiveCardMessage(content: {
+  title: string;
+  message: string;
+  facts: Array<{ title: string; value: string }>;
+  actions: Array<{ type: "Action.OpenUrl"; title: string; url: string }>,
+}): TeamsCardMessage {
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        contentUrl: null,
+        content: {
+          type: "AdaptiveCard",
+          $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+          version: "1.4",
+          body: [
+            {
+              type: "TextBlock",
+              text: content.title,
+              weight: "Bolder",
+              size: "Medium",
+            },
+            { type: "TextBlock", text: content.message, wrap: true },
+            ...(content.facts.length
+              ? [{ type: "FactSet" as const, facts: content.facts }]
+              : []),
+          ],
+          ...(content.actions.length ? { actions: content.actions } : {}),
+        },
+      },
+    ],
+  };
 }
 
 const ATTEMPT_TIMEOUT_MS = 5_000;
@@ -61,20 +174,16 @@ export async function sendFeedbackNotification(
     db,
     fetchImpl = fetch,
     webhookUrl,
+    format = "generic",
     adminUrl,
     serviceName,
     feedback,
   } = args;
 
-  const body = JSON.stringify({
+  const body = buildFeedbackBody(format, {
     serviceName,
-    feedbackId: feedback.id,
-    message: feedback.message,
-    email: feedback.email,
-    pageUrl: feedback.pageUrl,
-    hasScreenshot: feedback.screenshotPath !== null,
-    createdAt: feedback.createdAt.toISOString(),
     adminUrl,
+    feedback,
   });
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {

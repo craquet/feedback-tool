@@ -1,7 +1,28 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { SendIcon } from "lucide-react";
 import { updateServiceAction, type FormState } from "@/app/admin/actions";
+import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldTitle,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { WebhookFormat } from "@/db/schema";
 
 const initial: FormState = {};
 
@@ -10,72 +31,162 @@ export function SettingsForm({
   slug,
   name,
   webhookUrl,
+  webhookFormat: initialWebhookFormat,
+  acceptingReports,
+  acceptingScreenshots,
 }: {
   serviceId: number;
   slug: string;
   name: string;
   webhookUrl: string | null;
+  webhookFormat: WebhookFormat;
+  acceptingReports: boolean;
+  acceptingScreenshots: boolean;
 }) {
   const [state, formAction, pending] = useActionState(updateServiceAction, initial);
+  const [reports, setReports] = useState(acceptingReports);
+  const [screenshots, setScreenshots] = useState(acceptingScreenshots);
+  const [webhookFormat, setWebhookFormat] = useState<WebhookFormat>(
+    initialWebhookFormat,
+  );
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   return (
-    <form action={formAction} className="flex max-w-md flex-col gap-3">
+    <form action={formAction}>
       <input type="hidden" name="serviceId" value={serviceId} />
       <input type="hidden" name="slug" value={slug} />
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="settings-name">Service name</FieldLabel>
+          <Input id="settings-name" name="name" defaultValue={name} required />
+        </Field>
 
-      <label htmlFor="settings-name" className="text-sm font-medium">
-        Service name
-      </label>
-      <input
-        id="settings-name"
-        name="name"
-        defaultValue={name}
-        required
-        className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-500 dark:border-neutral-700 dark:bg-neutral-900"
-      />
+        <Field>
+          <FieldLabel htmlFor="settings-webhook">
+            Notification webhook URL
+          </FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              id="settings-webhook"
+              name="webhookUrl"
+              type="url"
+              defaultValue={webhookUrl ?? ""}
+              placeholder="https://outlook.office.com/webhook/…"
+            />
+            <InputGroupAddon align="inline-end">
+              <TestWebhookButton serviceId={serviceId} onResult={setTestResult} />
+            </InputGroupAddon>
+          </InputGroup>
+          {testResult ? (
+            <p className="text-muted-foreground text-xs" role="status">
+              {testResult}
+            </p>
+          ) : (
+            <FieldDescription>
+              A JSON POST is sent here for every new report. Leave empty to
+              disable notifications.
+            </FieldDescription>
+          )}
+        </Field>
 
-      <label htmlFor="settings-webhook" className="text-sm font-medium">
-        Notification webhook URL
-      </label>
-      <input
-        id="settings-webhook"
-        name="webhookUrl"
-        type="url"
-        defaultValue={webhookUrl ?? ""}
-        placeholder="https://outlook.office.com/webhook/…"
-        className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:border-neutral-500 dark:border-neutral-700 dark:bg-neutral-900"
-      />
-      <p className="text-xs text-neutral-500">
-        A JSON POST is sent here for every new report. Leave empty to disable notifications.
-      </p>
+        <Field>
+          <FieldLabel>Webhook format</FieldLabel>
+          <ToggleGroup
+            variant="outline"
+            value={[webhookFormat]}
+            onValueChange={(groupValue) => {
+              const next = groupValue[0]
+              if (next === "generic" || next === "microsoft-teams") {
+                setWebhookFormat(next)
+              }
+            }}
+          >
+            <ToggleGroupItem value="generic">Generic JSON</ToggleGroupItem>
+            <ToggleGroupItem value="microsoft-teams">
+              Microsoft Teams
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <FieldDescription>
+            Choose Microsoft Teams when the webhook posts directly to a Power
+            Automate “Post card in a chat or channel” action. Generic JSON sends
+            the plain feedback payload.
+          </FieldDescription>
+          <input type="hidden" name="webhookFormat" value={webhookFormat} />
+        </Field>
 
-      {state.error ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          {state.error}
-        </p>
-      ) : null}
+        <FieldLabel htmlFor="accepting-reports">
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldTitle>Accept new reports</FieldTitle>
+              <FieldDescription>
+                Turn off to temporarily stop receiving feedback (e.g. during a
+                spam attack). The embed form will show a notice instead.
+              </FieldDescription>
+            </FieldContent>
+            <Switch
+              id="accepting-reports"
+              checked={reports}
+              onCheckedChange={setReports}
+            />
+          </Field>
+        </FieldLabel>
+        <input
+          type="hidden"
+          name="acceptingReports"
+          value={reports ? "true" : "false"}
+        />
 
-      <div className="mt-2 flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-300"
-        >
-          {pending ? "Saving…" : "Save"}
-        </button>
-        <TestWebhookButton serviceId={serviceId} />
-      </div>
+        <FieldLabel htmlFor="accepting-screenshots">
+          <Field orientation="horizontal" data-disabled={!reports || undefined}>
+            <FieldContent>
+              <FieldTitle>Accept screenshots</FieldTitle>
+              <FieldDescription>
+                Turn off to reject attached screenshots while still accepting
+                text reports.
+              </FieldDescription>
+            </FieldContent>
+            <Switch
+              id="accepting-screenshots"
+              checked={screenshots}
+              disabled={!reports}
+              onCheckedChange={setScreenshots}
+            />
+          </Field>
+        </FieldLabel>
+        <input
+          type="hidden"
+          name="acceptingScreenshots"
+          value={screenshots ? "true" : "false"}
+        />
+
+        {state.error ? (
+          <p className="text-destructive text-sm" role="alert">
+            {state.error}
+          </p>
+        ) : null}
+
+        <div className="flex items-center gap-2">
+          <Button type="submit" disabled={pending}>
+            {pending ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </FieldGroup>
     </form>
   );
 }
 
-function TestWebhookButton({ serviceId }: { serviceId: number }) {
-  const [result, setResult] = useState<string | null>(null);
+function TestWebhookButton({
+  serviceId,
+  onResult,
+}: {
+  serviceId: number;
+  onResult: (message: string | null) => void;
+}) {
   const [testing, setTesting] = useState(false);
 
   async function handleTest() {
     setTesting(true);
-    setResult(null);
+    onResult(null);
     const webhookUrl = (
       document.getElementById("settings-webhook") as HTMLInputElement | null
     )?.value;
@@ -86,33 +197,32 @@ function TestWebhookButton({ serviceId }: { serviceId: number }) {
         body: JSON.stringify({ webhookUrl }),
       });
       if (response.status === 400) {
-        setResult("Enter a valid webhook URL first.");
+        onResult("Enter a valid webhook URL first.");
         return;
       }
       const body = await response.json();
-      setResult(
+      onResult(
         body.ok
           ? `Test delivered (status ${body.responseStatus}).`
           : `Delivery failed: ${body.error ?? "unknown error"}`,
       );
     } catch {
-      setResult("Test request failed.");
+      onResult("Test request failed.");
     } finally {
       setTesting(false);
     }
   }
 
   return (
-    <span className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={handleTest}
-        disabled={testing}
-        className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-      >
-        {testing ? "Testing…" : "Send test"}
-      </button>
-      {result ? <span className="text-xs text-neutral-500">{result}</span> : null}
-    </span>
+    <InputGroupButton
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={handleTest}
+      disabled={testing}
+    >
+      {testing ? <Spinner data-icon="inline-start" /> : <SendIcon data-icon="inline-start" />}
+      Send test
+    </InputGroupButton>
   );
 }

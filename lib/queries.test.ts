@@ -1,9 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { createDb, type Db } from "../db/client";
 import { feedback, services } from "../db/schema";
+import { saveScreenshot } from "./storage";
 import {
   createService,
+  deleteFeedback,
+  deleteFeedbackWithScreenshot,
   getFeedback,
   getServiceBySlug,
   listFeedback,
@@ -200,6 +206,33 @@ describe("admin queries", () => {
       const updated = db.db.select().from(services).all()[0];
       expect(updated.webhookUrl).toBeNull();
     });
+
+    it("updates the accepting flags", () => {
+      updateService(db.db, serviceId, {
+        acceptingReports: false,
+        acceptingScreenshots: false,
+      });
+
+      const updated = db.db.select().from(services).all()[0];
+      expect(updated.acceptingReports).toBe(false);
+      expect(updated.acceptingScreenshots).toBe(false);
+    });
+
+    it("does not touch flags that are not passed", () => {
+      updateService(db.db, serviceId, { acceptingReports: false });
+      updateService(db.db, serviceId, { name: "Only name" });
+
+      const updated = db.db.select().from(services).all()[0];
+      expect(updated.acceptingReports).toBe(false);
+      expect(updated.acceptingScreenshots).toBe(true);
+    });
+
+    it("updates the webhook format", () => {
+      updateService(db.db, serviceId, { webhookFormat: "microsoft-teams" });
+
+      const updated = db.db.select().from(services).all()[0];
+      expect(updated.webhookFormat).toBe("microsoft-teams");
+    });
   });
 
   describe("regenerateEmbedKey", () => {
@@ -211,6 +244,54 @@ describe("admin queries", () => {
       expect(newKey).toMatch(/^fb_[0-9a-f]{32}$/);
       expect(newKey).not.toBe(before);
       expect(db.db.select().from(services).all()[0].embedKey).toBe(newKey);
+    });
+  });
+
+  describe("deleteFeedback", () => {
+    it("removes the feedback row", () => {
+      const row = addFeedback({ message: "to be deleted" });
+
+      deleteFeedback(db.db, row.id);
+
+      expect(getFeedback(db.db, row.id)).toBeNull();
+    });
+
+    it("silently ignores unknown ids", () => {
+      expect(() => deleteFeedback(db.db, 99999)).not.toThrow();
+    });
+  });
+
+  describe("deleteFeedbackWithScreenshot", () => {
+    it("deletes the row and the attached screenshot file", async () => {
+      const screenshotsDir = mkdtempSync(path.join(tmpdir(), "delete-shots-"));
+      try {
+        const saved = await saveScreenshot({
+          rootDir: screenshotsDir,
+          serviceSlug: "app-x",
+          file: new File([new Uint8Array([1, 2, 3])], "shot.png", { type: "image/png" }),
+        });
+        if (!saved.ok) throw new Error("setup failed");
+        const row = db.db
+          .insert(feedback)
+          .values({ serviceId, message: "with shot", screenshotPath: saved.path })
+          .returning()
+          .get();
+
+        deleteFeedbackWithScreenshot(db.db, row.id, screenshotsDir);
+
+        expect(getFeedback(db.db, row.id)).toBeNull();
+        expect(existsSync(path.join(screenshotsDir, saved.path))).toBe(false);
+      } finally {
+        rmSync(screenshotsDir, { recursive: true, force: true });
+      }
+    });
+
+    it("deletes the row when there is no screenshot", () => {
+      const row = addFeedback({ message: "no shot" });
+
+      deleteFeedbackWithScreenshot(db.db, row.id, "/nonexistent-root");
+
+      expect(getFeedback(db.db, row.id)).toBeNull();
     });
   });
 });

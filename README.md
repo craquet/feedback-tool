@@ -8,6 +8,7 @@ Incoming reports can trigger a JSON webhook (e.g. Microsoft Teams) per service.
 ## Stack
 
 - Next.js 16 (App Router), React 19, Tailwind 4
+- shadcn/ui (Base UI primitives) + lucide-react icons
 - SQLite via Drizzle ORM (`better-sqlite3`)
 - Tests: Vitest (`npm test`)
 
@@ -53,9 +54,14 @@ Only the `/embed` page may be framed; all other pages send `frame-ancestors 'non
 | `GET /api/admin/feedback/:id/screenshot` | Serves an attached screenshot (admin session required). |
 | `POST /api/admin/services/:id/test-webhook` | Sends a test payload to a webhook URL (admin session required). |
 
+Reports can be deleted from the inbox or the detail view (with a confirmation
+dialog); deletion also removes the attached screenshot from disk.
+
 ## Webhook payload
 
-For each new report with a configured webhook URL:
+Each service has a webhook format setting (Settings → Webhook format).
+
+**Generic JSON** (default) — for each new report with a configured webhook URL:
 
 ```json
 {
@@ -69,6 +75,11 @@ For each new report with a configured webhook URL:
   "adminUrl": "https://feedback.example.com/admin/my-web-app/42"
 }
 ```
+
+**Microsoft Teams** — for webhooks that post directly into a Teams channel
+(e.g. a Power Automate flow with only a "Post card in a chat or channel"
+action). The body is a `message` with an Adaptive Card attachment containing
+the report title, message text, email/page facts and an "Open in admin" link.
 
 Delivery is best-effort: 5 s timeout, one retry, every attempt logged in the
 `notification_log` table. Use "Send test" on the settings page to verify integration.

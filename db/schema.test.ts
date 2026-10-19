@@ -27,6 +27,9 @@ describe("schema + migrations", () => {
       expect(row.slug).toBe("app-x");
       expect(row.embedKey).toBe("k_appx_1");
       expect(row.webhookUrl).toBeNull();
+      expect(row.acceptingReports).toBe(true);
+      expect(row.acceptingScreenshots).toBe(true);
+      expect(row.webhookFormat).toBe("generic");
       expect(row.createdAt).toBeInstanceOf(Date);
     });
 

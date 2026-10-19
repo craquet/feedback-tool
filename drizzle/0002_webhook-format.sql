@@ -1,0 +1,1 @@
+ALTER TABLE `services` ADD `webhook_format` text DEFAULT 'generic' NOT NULL;

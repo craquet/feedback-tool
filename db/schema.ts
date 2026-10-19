@@ -10,12 +10,24 @@ import {
 export const feedbackStatus = ["new", "read", "archived"] as const;
 export type FeedbackStatus = (typeof feedbackStatus)[number];
 
+export const webhookFormats = ["generic", "microsoft-teams"] as const;
+export type WebhookFormat = (typeof webhookFormats)[number];
+
 export const services = sqliteTable("services", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   embedKey: text("embed_key").notNull().unique(),
   webhookUrl: text("webhook_url"),
+  webhookFormat: text("webhook_format", { enum: webhookFormats })
+    .notNull()
+    .default("generic"),
+  acceptingReports: integer("accepting_reports", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  acceptingScreenshots: integer("accepting_screenshots", { mode: "boolean" })
+    .notNull()
+    .default(true),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
