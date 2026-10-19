@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
-    ImageIcon,
+    DownloadIcon,
     InboxIcon,
     LayoutGridIcon,
 } from "lucide-react"
@@ -11,8 +11,7 @@ import type { FeedbackStatus } from "@/db/schema"
 import { getServiceBySlug, listFeedback } from "@/lib/queries"
 import { getDb } from "@/db/client"
 import { formatDateTime } from "@/lib/format"
-import { DeleteFeedbackButton } from "@/components/DeleteFeedbackButton"
-import { Badge } from "@/components/ui/badge"
+import { BulkFeedbackList } from "@/components/BulkFeedbackList"
 import { Button } from "@/components/ui/button"
 import {
     Empty,
@@ -21,7 +20,6 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty"
-import { Separator } from "@/components/ui/separator"
 
 const PAGE_SIZE = 20
 
@@ -83,6 +81,16 @@ export default async function InboxPage({
                     <Button
                         variant="ghost"
                         size="sm"
+                        render={
+                            <a href={`/api/admin/services/${service.id}/export`} />
+                        }
+                    >
+                        <DownloadIcon data-icon="inline-start" />
+                        Export CSV
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         render={<Link href="/admin" />}
                     >
                         <LayoutGridIcon data-icon="inline-start" />
@@ -136,59 +144,18 @@ export default async function InboxPage({
                     </EmptyHeader>
                 </Empty>
             ) : (
-                <ul
-                    className="border-border bg-card divide-border divide-y rounded-xl border"
-                    role="list"
-                >
-                    {items.map((item) => (
-                        <li
-                            key={item.id}
-                            className="flex items-center gap-2 p-2"
-                        >
-                            <Link
-                                href={`${base}/${item.id}`}
-                                className="hover:bg-muted min-w-0 flex-1 rounded-lg p-2"
-                            >
-                                <span className="flex items-center gap-2">
-                                    <span className="truncate text-sm font-medium">
-                                        {item.message}
-                                    </span>
-                                    {item.status === "new" ? (
-                                        <Badge>New</Badge>
-                                    ) : null}
-                                </span>
-                                <span className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
-                                    {formatDateTime(item.createdAt)}
-                                    {item.email ? (
-                                        <>
-                                            <Separator
-                                                orientation="vertical"
-                                                className="mx-0.5 h-3"
-                                            />
-                                            {item.email}
-                                        </>
-                                    ) : null}
-                                    {item.screenshotPath ? (
-                                        <>
-                                            <Separator
-                                                orientation="vertical"
-                                                className="mx-0.5 h-3"
-                                            />
-                                            <ImageIcon
-                                                className="size-3.5"
-                                                aria-label="Has screenshot"
-                                            />
-                                        </>
-                                    ) : null}
-                                </span>
-                            </Link>
-                            <DeleteFeedbackButton
-                                feedbackId={item.id}
-                                size="icon-sm"
-                            />
-                        </li>
-                    ))}
-                </ul>
+                <BulkFeedbackList
+                    serviceId={service.id}
+                    base={base}
+                    items={items.map((item) => ({
+                        id: item.id,
+                        message: item.message,
+                        status: item.status,
+                        email: item.email,
+                        createdAt: formatDateTime(item.createdAt),
+                        hasScreenshot: item.screenshotPath !== null,
+                    }))}
+                />
             )}
 
             {totalPages > 1 ? (

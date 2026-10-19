@@ -5,10 +5,12 @@ import { redirect } from "next/navigation"
 import { assertAdmin } from "@/lib/session"
 import {
     createService,
+    deleteFeedbackBulkWithScreenshots,
     deleteFeedbackWithScreenshot,
     getFeedback,
     regenerateEmbedKey,
     setFeedbackStatus,
+    setFeedbackStatusBulk,
     updateService,
 } from "@/lib/queries"
 import { getDb } from "@/db/client"
@@ -119,6 +121,39 @@ export async function setFeedbackStatusAction(
         setFeedbackStatus(getDb(), id, status as FeedbackStatus)
         revalidatePath("/admin", "layout")
     }
+}
+
+export async function bulkFeedbackAction(formData: FormData): Promise<void> {
+    await assertAdmin()
+
+    const ids = formData
+        .getAll("ids")
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value > 0)
+    if (ids.length === 0) {
+        return
+    }
+
+    const operation = String(formData.get("operation") ?? "")
+    const statusByOperation: Record<string, FeedbackStatus> = {
+        markRead: "read",
+        markUnread: "new",
+        archive: "archived",
+    }
+    const status = statusByOperation[operation]
+    if (status) {
+        setFeedbackStatusBulk(getDb(), ids, status)
+    } else if (operation === "delete") {
+        deleteFeedbackBulkWithScreenshots(
+            getDb(),
+            ids,
+            process.env.SCREENSHOTS_DIR ?? "screenshots",
+        )
+    } else {
+        return
+    }
+
+    revalidatePath("/admin", "layout")
 }
 
 export async function deleteFeedbackAction(formData: FormData): Promise<void> {

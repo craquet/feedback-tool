@@ -9,13 +9,16 @@ import { saveScreenshot } from "./storage";
 import {
   createService,
   deleteFeedback,
+  deleteFeedbackBulkWithScreenshots,
   deleteFeedbackWithScreenshot,
   getFeedback,
   getServiceBySlug,
   listFeedback,
+  listFeedbackForCsv,
   listServicesWithCounts,
   regenerateEmbedKey,
   setFeedbackStatus,
+  setFeedbackStatusBulk,
   updateService,
 } from "./queries";
 
@@ -292,6 +295,104 @@ describe("admin queries", () => {
       deleteFeedbackWithScreenshot(db.db, row.id, "/nonexistent-root");
 
       expect(getFeedback(db.db, row.id)).toBeNull();
+    });
+  });
+
+  describe("setFeedbackStatusBulk", () => {
+    it("updates the status of all given ids", () => {
+      const a = addFeedback({});
+      const b = addFeedback({});
+      const c = addFeedback({});
+
+      setFeedbackStatusBulk(db.db, [a.id, b.id], "read");
+
+      expect(getFeedback(db.db, a.id)?.feedback.status).toBe("read");
+      expect(getFeedback(db.db, b.id)?.feedback.status).toBe("read");
+      expect(getFeedback(db.db, c.id)?.feedback.status).toBe("new");
+    });
+
+    it("ignores unknown ids", () => {
+      addFeedback({});
+
+      expect(() => setFeedbackStatusBulk(db.db, [99999], "read")).not.toThrow();
+    });
+
+    it("is a no-op for an empty list", () => {
+      addFeedback({});
+
+      expect(() => setFeedbackStatusBulk(db.db, [], "archived")).not.toThrow();
+      const rows = db.db.select().from(feedback).all();
+      expect(rows[0].status).toBe("new");
+    });
+  });
+
+  describe("deleteFeedbackBulkWithScreenshots", () => {
+    it("deletes rows and their screenshots", async () => {
+      const screenshotsDir = mkdtempSync(path.join(tmpdir(), "feedback-bulk-"));
+      try {
+        const shotA = await saveScreenshot({
+          rootDir: screenshotsDir,
+          serviceSlug: "app-x",
+          file: new File([new Uint8Array([1])], "a.png", { type: "image/png" }),
+        });
+        const shotB = await saveScreenshot({
+          rootDir: screenshotsDir,
+          serviceSlug: "app-x",
+          file: new File([new Uint8Array([2])], "b.png", { type: "image/png" }),
+        });
+        if (!shotA.ok || !shotB.ok) throw new Error("setup failed");
+        const a = db.db
+          .insert(feedback)
+          .values({ serviceId, message: "a", screenshotPath: shotA.path })
+          .returning()
+          .get();
+        const b = db.db
+          .insert(feedback)
+          .values({ serviceId, message: "b", screenshotPath: shotB.path })
+          .returning()
+          .get();
+        const kept = addFeedback({ message: "kept" });
+
+        deleteFeedbackBulkWithScreenshots(db.db, [a.id, b.id], screenshotsDir);
+
+        expect(getFeedback(db.db, a.id)).toBeNull();
+        expect(getFeedback(db.db, b.id)).toBeNull();
+        expect(getFeedback(db.db, kept.id)).not.toBeNull();
+        expect(existsSync(path.join(screenshotsDir, shotA.path))).toBe(false);
+        expect(existsSync(path.join(screenshotsDir, shotB.path))).toBe(false);
+      } finally {
+        rmSync(screenshotsDir, { recursive: true, force: true });
+      }
+    });
+
+    it("is a no-op for an empty list", () => {
+      addFeedback({});
+
+      expect(() =>
+        deleteFeedbackBulkWithScreenshots(db.db, [], "/nonexistent-root"),
+      ).not.toThrow();
+      expect(db.db.select().from(feedback).all()).toHaveLength(1);
+    });
+  });
+
+  describe("listFeedbackForCsv", () => {
+    it("returns all feedback of the service ordered oldest first", () => {
+      const a = addFeedback({ message: "first" });
+      const b = addFeedback({ message: "second" });
+      const other = db.db
+        .insert(services)
+        .values({ name: "App Y", slug: "app-y", embedKey: "k2" })
+        .returning()
+        .get();
+      db.db
+        .insert(feedback)
+        .values({ serviceId: other.id, message: "other service" })
+        .run();
+
+      const rows = listFeedbackForCsv(db.db, serviceId);
+
+      expect(rows.map((r) => r.id)).toEqual([a.id, b.id]);
+      expect(rows.map((r) => r.message)).toEqual(["first", "second"]);
     });
   });
 });

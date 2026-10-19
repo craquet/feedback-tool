@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type { AppDb } from "../db/client";
 import { feedback, services, type FeedbackStatus, type WebhookFormat } from "../db/schema";
 import { deleteScreenshot } from "./storage";
@@ -95,6 +95,47 @@ export function setFeedbackStatus(
 
 export function deleteFeedback(db: AppDb, id: number): void {
   db.delete(feedback).where(eq(feedback.id, id)).run();
+}
+
+export function setFeedbackStatusBulk(
+  db: AppDb,
+  ids: number[],
+  status: FeedbackStatus,
+): void {
+  if (ids.length === 0) {
+    return;
+  }
+  db.update(feedback).set({ status }).where(inArray(feedback.id, ids)).run();
+}
+
+export function deleteFeedbackBulkWithScreenshots(
+  db: AppDb,
+  ids: number[],
+  rootDir: string,
+): void {
+  if (ids.length === 0) {
+    return;
+  }
+  const rows = db
+    .select({ screenshotPath: feedback.screenshotPath })
+    .from(feedback)
+    .where(inArray(feedback.id, ids))
+    .all();
+  for (const row of rows) {
+    if (row.screenshotPath) {
+      deleteScreenshot(rootDir, row.screenshotPath);
+    }
+  }
+  db.delete(feedback).where(inArray(feedback.id, ids)).run();
+}
+
+export function listFeedbackForCsv(db: AppDb, serviceId: number): FeedbackRow[] {
+  return db
+    .select()
+    .from(feedback)
+    .where(eq(feedback.serviceId, serviceId))
+    .orderBy(asc(feedback.createdAt), asc(feedback.id))
+    .all();
 }
 
 export function deleteFeedbackWithScreenshot(

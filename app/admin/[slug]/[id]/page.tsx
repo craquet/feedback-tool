@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArchiveIcon, ArrowLeftIcon, EyeIcon, ImageIcon, RotateCcwIcon } from "lucide-react"
+import { ArchiveIcon, ArrowLeftIcon, ImageIcon, MailIcon, MailOpenIcon } from "lucide-react"
 import { getFeedback } from "@/lib/queries"
 import { getDb } from "@/db/client"
 import { formatDateTime } from "@/lib/format"
@@ -112,7 +112,7 @@ export default async function FeedbackDetailPage({
                     feedbackId={feedback.id}
                     status="read"
                     label="Mark read"
-                    icon={EyeIcon}
+                    icon={MailOpenIcon}
                 />
                 <StatusButton
                     feedbackId={feedback.id}
@@ -124,7 +124,7 @@ export default async function FeedbackDetailPage({
                     feedbackId={feedback.id}
                     status="new"
                     label="Mark unread"
-                    icon={RotateCcwIcon}
+                    icon={MailIcon}
                 />
                 <DeleteFeedbackButton feedbackId={feedback.id} />
             </div>
@@ -141,7 +141,7 @@ function StatusButton({
     feedbackId: number
     status: string
     label: string
-    icon: typeof EyeIcon
+    icon: typeof MailOpenIcon
 }) {
     return (
         <form action={setFeedbackStatusAction}>

@@ -53,6 +53,7 @@ Only the `/embed` page may be framed; all other pages send `frame-ancestors 'non
 | `POST /api/admin/logout` | Clears the session. |
 | `GET /api/admin/feedback/:id/screenshot` | Serves an attached screenshot (admin session required). |
 | `POST /api/admin/services/:id/test-webhook` | Sends a test payload to a webhook URL (admin session required). |
+| `GET /api/admin/services/:id/export` | Downloads all feedback of the service as CSV (admin session required). Add `?ids=1,2,3` to export only those reports. |
 
 Reports can be deleted from the inbox or the detail view (with a confirmation
 dialog); deletion also removes the attached screenshot from disk.
