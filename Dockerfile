@@ -1,6 +1,7 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
+RUN apk add python3 make
 RUN npm ci
 
 FROM deps AS build
