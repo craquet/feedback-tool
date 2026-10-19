@@ -1,13 +1,60 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArchiveIcon, ArrowLeftIcon, ImageIcon, MailIcon, MailOpenIcon } from "lucide-react"
-import { getFeedback } from "@/lib/queries"
+import {
+    ArchiveIcon,
+    ArrowLeftIcon,
+    ImageIcon,
+    MailIcon,
+    MailOpenIcon,
+} from "lucide-react"
+import { FeedbackRow, getFeedback } from "@/lib/queries"
 import { getDb } from "@/db/client"
 import { formatDateTime } from "@/lib/format"
 import { setFeedbackStatusAction } from "@/app/admin/actions"
 import { DeleteFeedbackButton } from "@/components/DeleteFeedbackButton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+
+function ButtonRow(props: { feedback: FeedbackRow }) {
+    return (
+        <div className="flex flex-wrap gap-2">
+            {props.feedback.status === "new" && (
+                <StatusButton
+                    feedbackId={props.feedback.id}
+                    status="read"
+                    label="Mark read"
+                    icon={MailOpenIcon}
+                />
+            )}
+            {props.feedback.status === "read" && (
+                <StatusButton
+                    feedbackId={props.feedback.id}
+                    status="new"
+                    label="Mark unread"
+                    icon={MailIcon}
+                />
+            )}
+            {props.feedback.status !== "archived" && (
+                <StatusButton
+                    feedbackId={props.feedback.id}
+                    status="archived"
+                    label="Archive"
+                    icon={ArchiveIcon}
+                />
+            )}
+            {props.feedback.status === "archived" && (
+                <StatusButton
+                    feedbackId={props.feedback.id}
+                    status="read"
+                    label="Unarchive"
+                    icon={ArchiveIcon}
+                />
+            )}
+
+            <DeleteFeedbackButton feedbackId={props.feedback.id} />
+        </div>
+    )
+}
 
 export default async function FeedbackDetailPage({
     params,
@@ -39,15 +86,22 @@ export default async function FeedbackDetailPage({
                 Back to inbox
             </Button>
 
+            <ButtonRow feedback={feedback} />
+
             <article className="border-border bg-card rounded-xl border p-4">
                 <header className="mb-3 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-                    <Badge
-                        variant={
-                            feedback.status === "new" ? "default" : "secondary"
-                        }
-                    >
-                        {feedback.status}
-                    </Badge>
+                    {feedback.status === "new" && (
+                        <span
+                            className="mx-0.5 size-2 shrink-0 rounded-full bg-blue-500"
+                            aria-label="Unread"
+                            title="Unread"
+                        />
+                    )}
+                    {feedback.status === "archived" && (
+                        <Badge variant="secondary">
+                            <ArchiveIcon /> Archived
+                        </Badge>
+                    )}
                     <span>{formatDateTime(feedback.createdAt)}</span>
                 </header>
 
@@ -107,27 +161,7 @@ export default async function FeedbackDetailPage({
                 ) : null}
             </article>
 
-            <div className="flex flex-wrap gap-2">
-                <StatusButton
-                    feedbackId={feedback.id}
-                    status="read"
-                    label="Mark read"
-                    icon={MailOpenIcon}
-                />
-                <StatusButton
-                    feedbackId={feedback.id}
-                    status="archived"
-                    label="Archive"
-                    icon={ArchiveIcon}
-                />
-                <StatusButton
-                    feedbackId={feedback.id}
-                    status="new"
-                    label="Mark unread"
-                    icon={MailIcon}
-                />
-                <DeleteFeedbackButton feedbackId={feedback.id} />
-            </div>
+            <ButtonRow feedback={feedback} />
         </div>
     )
 }

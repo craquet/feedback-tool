@@ -3,9 +3,11 @@ import { notFound } from "next/navigation"
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
+    CogIcon,
     DownloadIcon,
     InboxIcon,
     LayoutGridIcon,
+    SettingsIcon,
 } from "lucide-react"
 import type { FeedbackStatus } from "@/db/schema"
 import { getServiceBySlug, listFeedback } from "@/lib/queries"
@@ -82,7 +84,9 @@ export default async function InboxPage({
                         variant="ghost"
                         size="sm"
                         render={
-                            <a href={`/api/admin/services/${service.id}/export`} />
+                            <a
+                                href={`/api/admin/services/${service.id}/export`}
+                            />
                         }
                     >
                         <DownloadIcon data-icon="inline-start" />
@@ -101,6 +105,7 @@ export default async function InboxPage({
                         size="sm"
                         render={<Link href={`${base}/settings`} />}
                     >
+                        <SettingsIcon data-icon={"inline-start"} />
                         Settings
                     </Button>
                 </div>

@@ -50,7 +50,8 @@ export function BulkFeedbackList({
     const [confirming, setConfirming] = useState(false)
 
     const allSelected = items.every((item) => selected.has(item.id))
-    const someSelected = !allSelected && items.some((item) => selected.has(item.id))
+    const someSelected =
+        !allSelected && items.some((item) => selected.has(item.id))
 
     function toggle(id: number, checked: boolean) {
         const next = new Set(selected)
@@ -63,7 +64,9 @@ export function BulkFeedbackList({
     }
 
     function toggleAll() {
-        setSelected(allSelected ? new Set() : new Set(items.map((item) => item.id)))
+        setSelected(
+            allSelected ? new Set() : new Set(items.map((item) => item.id)),
+        )
     }
 
     function run(operation: string) {
@@ -101,51 +104,56 @@ export function BulkFeedbackList({
                 </span>
             </div>
 
-            {selected.size > 0 ? (
-                <div className="bg-muted/50 flex flex-wrap items-center gap-1.5 rounded-lg border p-2">
-                    <span className="text-muted-foreground mr-1 px-1 text-sm">
-                        {selected.size} selected
-                    </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => run("markRead")}
-                    >
-                        <MailOpenIcon data-icon="inline-start" />
-                        Mark read
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => run("markUnread")}
-                    >
-                        <MailIcon data-icon="inline-start" />
-                        Mark unread
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => run("archive")}
-                    >
-                        <ArchiveIcon data-icon="inline-start" />
-                        Archive
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={exportSelected}>
-                        <DownloadIcon data-icon="inline-start" />
-                        Export selected
-                    </Button>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => setConfirming(true)}
-                    >
-                        <Trash2Icon data-icon="inline-start" />
-                        Delete
-                    </Button>
+            <div className="bg-muted/50 flex flex-wrap items-center gap-1.5 rounded-lg border p-2">
+                <span className="text-muted-foreground mr-1 px-1 text-sm">
+                    {selected.size} selected
+                </span>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pending || selected.size === 0}
+                    onClick={() => run("markRead")}
+                >
+                    <MailOpenIcon data-icon="inline-start" />
+                    Mark read
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pending || selected.size === 0}
+                    onClick={() => run("markUnread")}
+                >
+                    <MailIcon data-icon="inline-start" />
+                    Mark unread
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pending || selected.size === 0}
+                    onClick={() => run("archive")}
+                >
+                    <ArchiveIcon data-icon="inline-start" />
+                    Archive
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={selected.size === 0}
+                    onClick={exportSelected}
+                >
+                    <DownloadIcon data-icon="inline-start" />
+                    Export selected
+                </Button>
+                <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={pending || selected.size === 0}
+                    onClick={() => setConfirming(true)}
+                >
+                    <Trash2Icon data-icon="inline-start" />
+                    Delete
+                </Button>
+                {selected.size > 0 && (
                     <Button
                         variant="ghost"
                         size="sm"
@@ -153,8 +161,8 @@ export function BulkFeedbackList({
                     >
                         Clear
                     </Button>
-                </div>
-            ) : null}
+                )}
+            </div>
 
             <ul
                 className="border-border bg-card divide-border divide-y rounded-xl border"
@@ -164,7 +172,9 @@ export function BulkFeedbackList({
                     <li key={item.id} className="flex items-center gap-2 p-2">
                         <Checkbox
                             checked={selected.has(item.id)}
-                            onCheckedChange={(checked) => toggle(item.id, checked)}
+                            onCheckedChange={(checked) =>
+                                toggle(item.id, checked)
+                            }
                             aria-label={`Select report: ${item.message}`}
                             className="ml-2"
                         />
@@ -175,7 +185,10 @@ export function BulkFeedbackList({
                                 title="Unread"
                             />
                         ) : (
-                            <span className="mx-0.5 size-2 shrink-0" aria-hidden />
+                            <span
+                                className="mx-0.5 size-2 shrink-0"
+                                aria-hidden
+                            />
                         )}
                         <Link
                             href={`${base}/${item.id}`}
