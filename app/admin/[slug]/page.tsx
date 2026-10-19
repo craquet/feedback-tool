@@ -3,7 +3,6 @@ import { notFound } from "next/navigation"
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
-    CogIcon,
     DownloadIcon,
     InboxIcon,
     LayoutGridIcon,
@@ -100,14 +99,12 @@ export default async function InboxPage({
                         <LayoutGridIcon data-icon="inline-start" />
                         Other services
                     </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        render={<Link href={`${base}/settings`} />}
-                    >
-                        <SettingsIcon data-icon={"inline-start"} />
-                        Settings
-                    </Button>
+                    <Link href={`${base}/settings`}>
+                        <Button variant="ghost" size="sm">
+                            <SettingsIcon data-icon={"inline-start"} />
+                            Settings
+                        </Button>
+                    </Link>
                 </div>
             </div>
 

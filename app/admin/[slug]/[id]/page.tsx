@@ -160,8 +160,6 @@ export default async function FeedbackDetailPage({
                     </div>
                 ) : null}
             </article>
-
-            <ButtonRow feedback={feedback} />
         </div>
     )
 }
