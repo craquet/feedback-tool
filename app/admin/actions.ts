@@ -7,6 +7,7 @@ import {
     createService,
     deleteFeedbackBulkWithScreenshots,
     deleteFeedbackWithScreenshot,
+    deleteService,
     getFeedback,
     regenerateEmbedKey,
     setFeedbackStatus,
@@ -174,4 +175,16 @@ export async function deleteFeedbackAction(formData: FormData): Promise<void> {
     )
     revalidatePath("/admin", "layout")
     redirect(`/admin/${entry.service.slug}`)
+}
+
+export async function deleteServiceAction(formData: FormData): Promise<void> {
+    await assertAdmin()
+
+    const id = Number(formData.get("serviceId"))
+    if (!Number.isInteger(id)) {
+        return
+    }
+    deleteService(getDb(), id, process.env.SCREENSHOTS_DIR ?? "screenshots")
+    revalidatePath("/admin", "layout")
+    redirect("/admin")
 }

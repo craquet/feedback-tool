@@ -11,6 +11,7 @@ import {
   deleteFeedback,
   deleteFeedbackBulkWithScreenshots,
   deleteFeedbackWithScreenshot,
+  deleteService,
   getFeedback,
   getServiceBySlug,
   listFeedback,
@@ -295,6 +296,57 @@ describe("admin queries", () => {
       deleteFeedbackWithScreenshot(db.db, row.id, "/nonexistent-root");
 
       expect(getFeedback(db.db, row.id)).toBeNull();
+    });
+  });
+
+  describe("deleteService", () => {
+    it("removes the service, cascades its feedback and deletes screenshots", async () => {
+      const screenshotsDir = mkdtempSync(path.join(tmpdir(), "delete-svc-"));
+      try {
+        const saved = await saveScreenshot({
+          rootDir: screenshotsDir,
+          serviceSlug: "app-x",
+          file: new File([new Uint8Array([1, 2, 3])], "shot.png", { type: "image/png" }),
+        });
+        if (!saved.ok) throw new Error("setup failed");
+        db.db
+          .insert(feedback)
+          .values({ serviceId, message: "with shot", screenshotPath: saved.path })
+          .run();
+
+        deleteService(db.db, serviceId, screenshotsDir);
+
+        expect(getServiceBySlug(db.db, "app-x")).toBeNull();
+        expect(db.db.select().from(feedback).all()).toHaveLength(0);
+        expect(existsSync(path.join(screenshotsDir, saved.path))).toBe(false);
+      } finally {
+        rmSync(screenshotsDir, { recursive: true, force: true });
+      }
+    });
+
+    it("keeps other services and their feedback", () => {
+      const other = db.db
+        .insert(services)
+        .values({ name: "App Y", slug: "app-y", embedKey: "k2" })
+        .returning()
+        .get();
+      const otherFeedback = db.db
+        .insert(feedback)
+        .values({ serviceId: other.id, message: "keep me" })
+        .returning()
+        .get();
+      addFeedback();
+
+      deleteService(db.db, serviceId, "/nonexistent-root");
+
+      expect(getServiceBySlug(db.db, "app-y")).not.toBeNull();
+      expect(getFeedback(db.db, otherFeedback.id)).not.toBeNull();
+      expect(db.db.select().from(feedback).all()).toHaveLength(1);
+    });
+
+    it("is a no-op for unknown ids", () => {
+      deleteService(db.db, 9999, "/nonexistent-root");
+      expect(getServiceBySlug(db.db, "app-x")).not.toBeNull();
     });
   });
 

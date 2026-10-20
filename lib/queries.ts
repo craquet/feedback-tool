@@ -154,6 +154,21 @@ export function deleteFeedbackWithScreenshot(
   deleteFeedback(db, id);
 }
 
+export function deleteService(db: AppDb, id: number, rootDir: string): void {
+  const rows = db
+    .select({ screenshotPath: feedback.screenshotPath })
+    .from(feedback)
+    .where(eq(feedback.serviceId, id))
+    .all();
+  for (const row of rows) {
+    if (row.screenshotPath) {
+      deleteScreenshot(rootDir, row.screenshotPath);
+    }
+  }
+  // feedback and notification_log rows go with the service via ON DELETE CASCADE
+  db.delete(services).where(eq(services.id, id)).run();
+}
+
 export type CreateServiceResult =
   | { ok: true; service: Service }
   | { ok: false; error: string };

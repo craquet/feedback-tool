@@ -79,7 +79,9 @@ disabled a submission including a screenshot returns `400`.
 Reports can be deleted from the inbox or the detail view (with a confirmation
 dialog); deletion also removes the attached screenshot from disk. The inbox
 also supports multi-select bulk actions: mark read/unread, archive, delete,
-and CSV export of the selected reports.
+and CSV export of the selected reports. Whole services can be deleted from
+their Settings page (Danger zone), which removes all of the service's feedback
+and uploaded screenshots.
 
 ## Webhook payload
 

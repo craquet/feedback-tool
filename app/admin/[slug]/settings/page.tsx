@@ -4,9 +4,11 @@ import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react"
 import { getServiceBySlug } from "@/lib/queries"
 import { getDb } from "@/db/client"
 import { SettingsForm } from "@/components/SettingsForm"
+import { DeleteServiceButton } from "@/components/DeleteServiceButton"
 import { EmbedSnippets } from "@/components/EmbedSnippets"
 import { regenerateEmbedKeyAction } from "@/app/admin/actions"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import {
     Card,
     CardContent,
@@ -87,7 +89,7 @@ export default async function ServiceSettingsPage({
                         currently deployed for this service.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col gap-4">
                     <form action={regenerateEmbedKeyAction}>
                         <input
                             type="hidden"
@@ -100,6 +102,22 @@ export default async function ServiceSettingsPage({
                             Regenerate embed key
                         </Button>
                     </form>
+                    <Separator />
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col gap-1">
+                            <p className="text-sm font-medium">
+                                Delete this service
+                            </p>
+                            <p className="text-muted-foreground text-sm">
+                                Removes the service, all of its feedback and
+                                uploaded screenshots. This cannot be undone.
+                            </p>
+                        </div>
+                        <DeleteServiceButton
+                            serviceId={service.id}
+                            serviceName={service.name}
+                        />
+                    </div>
                 </CardContent>
             </Card>
 

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { MessageSquareTextIcon, PlusIcon } from "lucide-react"
+import { LogoutButton } from "@/components/LogoutButton"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Button } from "@/components/ui/button"
 
@@ -30,6 +31,7 @@ export default function AdminLayout({
                             <PlusIcon data-icon="inline-start" />
                             New service
                         </Button>
+                        <LogoutButton />
                     </div>
                 </div>
             </header>
