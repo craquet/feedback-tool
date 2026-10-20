@@ -4,6 +4,17 @@ import { LogoutButton } from "@/components/LogoutButton"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Button } from "@/components/ui/button"
 
+// Every page in this group is behind auth, so it must never be prerendered.
+// `requireAdmin()` reads the session cookie, which normally opts a page into
+// dynamic rendering — but that only happens when the auth env vars are present
+// at build time. In the Docker image only NEXT_PUBLIC_BASE_PATH is passed to
+// the build, so `isAdmin()` short-circuits before touching cookies(), the route
+// looks static, and Next bakes a redirect-to-login into the build output. That
+// stale redirect is then served to logged-in users (and cached), which is what
+// made pages like /admin/new bounce back to the login screen. Forcing dynamic
+// here covers the whole group and does not depend on build-time env.
+export const dynamic = "force-dynamic"
+
 export default function AdminLayout({
     children,
 }: {

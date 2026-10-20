@@ -38,6 +38,12 @@ first start on Linux, Docker creates these directories owned by root — run
 On first start the database schema is applied automatically. Create your first service via
 the dashboard at `/admin` (you will be asked for `ADMIN_PASSWORD`).
 
+The admin credentials (`ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `ADMIN_BASE_URL`)
+are read at **runtime** only; the image build only needs
+`NEXT_PUBLIC_BASE_PATH`. Auth pages are marked `force-dynamic`, so they are
+never prerendered into the image regardless of which env vars are present during
+`next build`.
+
 ### Environment variables
 
 | Variable | Purpose |
