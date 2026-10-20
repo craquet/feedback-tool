@@ -19,7 +19,10 @@ per-service grouping, admin dashboard, webhook notifications.
 ## Schema
 
 ```ts
-services: id (pk), name, slug (unique), embedKey (unique), webhookUrl (nullable), createdAt
+services: id (pk), name, slug (unique), embedKey (unique), webhookUrl (nullable),
+          webhookFormat ('generic'|'microsoft-teams', default 'generic'),
+          acceptingReports (bool, default true), acceptingScreenshots (bool, default true),
+          createdAt
 feedback: id (pk), serviceId (FK -> services), message, email?, screenshotPath?,
           pageUrl?, userAgent?, status ('new'|'read'|'archived', default 'new'), createdAt
           index (serviceId, status, createdAt)
@@ -35,7 +38,7 @@ notification_log: id, feedbackId (FK), webhookUrl, ok, responseStatus?, error?, 
    key + IP). `GET/POST /embed` page: standalone minimal form in route group, key from `?k=`.
    Security headers: only `/embed` is frameable.
 3. **Admin auth** — `ADMIN_PASSWORD` + `ADMIN_SESSION_SECRET` env, constant-time compare,
-   HMAC-signed session cookie, `middleware.ts` guards `/admin/*`, login/logout routes.
+   HMAC-signed session cookie, `proxy.ts` guards `/admin/*`, login/logout routes.
 4. **Notifications** — `lib/notify.ts`: JSON payload POST to `services.webhookUrl` with
    timeout, one retry, every attempt logged in `notification_log`. Best-effort.
 5. **Admin dashboard** — server components + server actions:
@@ -45,8 +48,8 @@ notification_log: id, feedbackId (FK), webhookUrl, ok, responseStatus?, error?, 
    - `/admin/[slug]/settings`: name, webhook URL + test button, regenerate embed key,
      iframe snippet
    - create new service
-6. **Polish** — README (env vars, embed snippet, webhook payload, backups), Dockerfile with
-   volumes for `data/` and `screenshots/`, lint + build green.
+6. **Polish** — README (env vars, embed snippet, webhook payload, backups), Dockerfile +
+   docker-compose.yml with bind mounts for `data/` and `screenshots/`, lint + build green.
 
 ## Trade-offs
 

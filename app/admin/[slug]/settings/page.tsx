@@ -4,7 +4,7 @@ import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react"
 import { getServiceBySlug } from "@/lib/queries"
 import { getDb } from "@/db/client"
 import { SettingsForm } from "@/components/SettingsForm"
-import { CopySnippet } from "@/components/CopySnippet"
+import { EmbedSnippets } from "@/components/EmbedSnippets"
 import { regenerateEmbedKeyAction } from "@/app/admin/actions"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,7 +27,7 @@ export default async function ServiceSettingsPage({
     }
 
     const embedBaseUrl = process.env.ADMIN_BASE_URL ?? "http://localhost:3000"
-    const snippet = `<iframe src="${embedBaseUrl}/embed?k=${service.embedKey}" style="width:100%;max-width:480px;height:460px;border:0" title="Feedback"></iframe>`
+    const embedUrl = `${embedBaseUrl}/embed?k=${service.embedKey}`
 
     return (
         <div className="flex flex-col gap-4">
@@ -39,6 +39,7 @@ export default async function ServiceSettingsPage({
                     variant="ghost"
                     size="sm"
                     render={<Link href={`/admin/${service.slug}`} />}
+                    nativeButton={false}
                 >
                     <ArrowLeftIcon data-icon="inline-start" />
                     Back to inbox
@@ -69,12 +70,12 @@ export default async function ServiceSettingsPage({
                 <CardHeader>
                     <CardTitle>Embed snippet</CardTitle>
                     <CardDescription>
-                        Paste this into any page of {service.name} to collect
-                        feedback.
+                        Pick your platform and paste the snippet into any page
+                        of {service.name}.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <CopySnippet text={snippet} />
+                    <EmbedSnippets embedUrl={embedUrl} />
                 </CardContent>
             </Card>
 

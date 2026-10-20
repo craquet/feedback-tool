@@ -81,6 +81,7 @@ export default async function FeedbackDetailPage({
                 size="sm"
                 className="w-fit"
                 render={<Link href={base} />}
+                nativeButton={false}
             >
                 <ArrowLeftIcon data-icon="inline-start" />
                 Back to inbox

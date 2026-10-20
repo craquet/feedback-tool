@@ -25,6 +25,7 @@ export default function AdminLayout({
                             variant="outline"
                             size="sm"
                             render={<Link href="/admin/new" />}
+                            nativeButton={false}
                         >
                             <PlusIcon data-icon="inline-start" />
                             New service

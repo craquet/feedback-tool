@@ -82,6 +82,7 @@ export default async function InboxPage({
                     <Button
                         variant="ghost"
                         size="sm"
+                        nativeButton={false}
                         render={
                             <a
                                 href={`/api/admin/services/${service.id}/export`}
@@ -95,6 +96,7 @@ export default async function InboxPage({
                         variant="ghost"
                         size="sm"
                         render={<Link href="/admin" />}
+                        nativeButton={false}
                     >
                         <LayoutGridIcon data-icon="inline-start" />
                         Other services
@@ -125,6 +127,7 @@ export default async function InboxPage({
                             size="sm"
                             aria-current={active ? "true" : undefined}
                             render={<Link href={href} />}
+                            nativeButton={false}
                         >
                             {tab.label} ({counts[tab.value]})
                         </Button>
@@ -169,6 +172,7 @@ export default async function InboxPage({
                             render={
                                 <Link href={pageHref(base, status, page - 1)} />
                             }
+                            nativeButton={false}
                         >
                             <ChevronLeftIcon data-icon="inline-start" />
                             Newer
@@ -186,6 +190,7 @@ export default async function InboxPage({
                             render={
                                 <Link href={pageHref(base, status, page + 1)} />
                             }
+                            nativeButton={false}
                         >
                             Older
                             <ChevronRightIcon data-icon="inline-end" />

@@ -230,6 +230,33 @@ describe("webhook payload builders", () => {
     ).toBeUndefined();
   });
 
+  it("includes a single-line summary so Teams previews the feedback", () => {
+    const body: TeamsCardMessage = JSON.parse(
+      buildFeedbackBody("microsoft-teams", {
+        serviceName: "App X",
+        adminUrl: "https://feedback.example.com/admin/app-x/7",
+        feedback: baseFeedback,
+      }),
+    );
+    expect(body.attachments[0].content.summary).toBe(
+      "New feedback for App X: The export button is broken",
+    );
+  });
+
+  it("collapses newlines and truncates long summaries", () => {
+    const body: TeamsCardMessage = JSON.parse(
+      buildFeedbackBody("microsoft-teams", {
+        serviceName: "App X",
+        adminUrl: "https://feedback.example.com/admin/app-x/7",
+        feedback: { ...baseFeedback, message: `first line\n${"x".repeat(300)}` },
+      }),
+    );
+    const summary = body.attachments[0].content.summary;
+    expect(summary).not.toContain("\n");
+    expect(summary.length).toBeLessThanOrEqual(140);
+    expect(summary.endsWith("…")).toBe(true);
+  });
+
   it("builds a flat payload for the generic format", () => {
     const body = JSON.parse(
       buildFeedbackBody("generic", {
@@ -253,5 +280,6 @@ describe("webhook payload builders", () => {
     );
     expect(teams.attachments[0].content.type).toBe("AdaptiveCard");
     expect(teams.attachments[0].contentType).toBe("application/vnd.microsoft.card.adaptive");
+    expect(teams.attachments[0].content.summary).toBe("Test notification for App X");
   });
 });

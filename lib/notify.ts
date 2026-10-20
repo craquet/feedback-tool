@@ -35,6 +35,7 @@ export interface TeamsCardMessage {
       type: "AdaptiveCard";
       $schema: string;
       version: string;
+      summary: string;
       body: Array<
         | { type: "TextBlock"; text: string; weight?: string; size?: string; wrap?: boolean }
         | { type: "FactSet"; facts: Array<{ title: string; value: string }> }
@@ -58,6 +59,9 @@ export function buildFeedbackBody(
     }
     return JSON.stringify(
       adaptiveCardMessage({
+        summary: summarizeText(
+          `New feedback for ${data.serviceName}: ${data.feedback.message}`,
+        ),
         title: `New feedback for ${data.serviceName}`,
         message: data.feedback.message,
         facts,
@@ -87,6 +91,7 @@ export function buildTestBody(
   if (format === "microsoft-teams") {
     return JSON.stringify(
       adaptiveCardMessage({
+        summary: summarizeText(`Test notification for ${data.serviceName}`),
         title: `Test notification for ${data.serviceName}`,
         message: data.message,
         facts: [],
@@ -97,7 +102,20 @@ export function buildTestBody(
   return JSON.stringify({ test: true, ...data });
 }
 
+// Teams uses the card's top-level `summary` as the notification preview text;
+// keep it short and on a single line.
+const SUMMARY_MAX_LENGTH = 140;
+
+function summarizeText(text: string): string {
+  const singleLine = text.replace(/\s+/g, " ").trim();
+  if (singleLine.length <= SUMMARY_MAX_LENGTH) {
+    return singleLine;
+  }
+  return `${singleLine.slice(0, SUMMARY_MAX_LENGTH - 1)}…`;
+}
+
 function adaptiveCardMessage(content: {
+  summary: string;
   title: string;
   message: string;
   facts: Array<{ title: string; value: string }>;
@@ -113,6 +131,7 @@ function adaptiveCardMessage(content: {
           type: "AdaptiveCard",
           $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
           version: "1.4",
+          summary: content.summary,
           body: [
             {
               type: "TextBlock",

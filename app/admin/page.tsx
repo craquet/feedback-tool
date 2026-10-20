@@ -45,7 +45,10 @@ export default function AdminOverviewPage() {
                         </EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>
-                        <Button render={<Link href="/admin/new" />}>
+                        <Button
+                            render={<Link href="/admin/new" />}
+                            nativeButton={false}
+                        >
                             <PlusIcon data-icon="inline-start" />
                             Create the first service
                         </Button>
@@ -77,6 +80,7 @@ export default function AdminOverviewPage() {
                                                 href={`/admin/${service.slug}`}
                                             />
                                         }
+                                        nativeButton={false}
                                     >
                                         <InboxIcon data-icon="inline-start" />
                                         Inbox
@@ -89,6 +93,7 @@ export default function AdminOverviewPage() {
                                                 href={`/admin/${service.slug}/settings`}
                                             />
                                         }
+                                        nativeButton={false}
                                     >
                                         <SettingsIcon data-icon="inline-start" />
                                         Settings
