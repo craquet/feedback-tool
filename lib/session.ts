@@ -1,8 +1,10 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { SESSION_COOKIE_NAME, verifySessionToken } from "./auth";
 
-export async function isAdmin(): Promise<boolean> {
+export const isAdmin = cache(async (): Promise<boolean> => {
   const secret = process.env.ADMIN_SESSION_SECRET;
   if (!secret) {
     return false;
@@ -12,6 +14,19 @@ export async function isAdmin(): Promise<boolean> {
     return false;
   }
   return verifySessionToken(token, { secret, now: () => Date.now() });
+});
+
+/**
+ * Authoritative auth check for admin server components. The proxy only does
+ * an optimistic pre-filter; every page that touches admin data must call this
+ * (or `assertAdmin`) so authorization is enforced next to the data itself.
+ * Calling `cookies()` here also guarantees the page renders dynamically and
+ * is never prerendered into the static build output.
+ */
+export async function requireAdmin(): Promise<void> {
+  if (!(await isAdmin())) {
+    redirect("/admin/login");
+  }
 }
 
 export async function assertAdmin(): Promise<void> {

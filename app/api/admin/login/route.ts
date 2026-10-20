@@ -5,8 +5,24 @@ import {
     createSessionToken,
     verifyAdminPassword,
 } from "@/lib/auth"
+import { clientIp, createRateLimiter } from "@/lib/rate-limit"
+
+// Brute-force protection: 10 attempts, then ~1 per 15 minutes per client.
+// Buckets are in-memory, which is fine for this single-instance deployment.
+const limiter = createRateLimiter({
+    capacity: 10,
+    refillPerMs: 1 / (15 * 60 * 1000),
+    now: () => Date.now(),
+})
 
 export async function POST(request: Request): Promise<Response> {
+    if (!limiter.allow(clientIp(request))) {
+        return NextResponse.json(
+            { error: "Too many login attempts. Please try again later." },
+            { status: 429 },
+        )
+    }
+
     const password = process.env.ADMIN_PASSWORD
     const secret = process.env.ADMIN_SESSION_SECRET
     if (!password || !secret) {

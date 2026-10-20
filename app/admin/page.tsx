@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { InboxIcon, PlusIcon, SettingsIcon } from "lucide-react"
 import { listServicesWithCounts } from "@/lib/queries"
+import { requireAdmin } from "@/lib/session"
 import { getDb } from "@/db/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,7 +27,9 @@ export const metadata = {
     title: "Services — Feedback Admin",
 }
 
-export default function AdminOverviewPage() {
+export default async function AdminOverviewPage() {
+    await requireAdmin()
+
     const list = listServicesWithCounts(getDb())
 
     return (

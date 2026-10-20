@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { assertAdmin } from "@/lib/session"
+import { isBlockedWebhookUrl } from "@/lib/notify"
 import {
     createService,
     deleteFeedbackBulkWithScreenshots,
@@ -77,6 +78,12 @@ export async function updateServiceAction(
     }
     if (webhookUrl && !/^https?:\/\//.test(webhookUrl)) {
         return { error: "Webhook URL must start with http:// or https://" }
+    }
+    if (webhookUrl && isBlockedWebhookUrl(webhookUrl)) {
+        return {
+            error:
+                "This URL points to a private or internal host and cannot be used as a webhook",
+        }
     }
 
     updateService(getDb(), id, {

@@ -4,7 +4,7 @@ import { getDb } from "@/db/client"
 import { feedback, services } from "@/db/schema"
 import { parseFeedbackInput } from "@/lib/validation"
 import { saveScreenshot } from "@/lib/storage"
-import { createRateLimiter } from "@/lib/rate-limit"
+import { clientIp, createRateLimiter } from "@/lib/rate-limit"
 import { sendFeedbackNotification } from "@/lib/notify"
 
 const limiter = createRateLimiter({
@@ -12,11 +12,6 @@ const limiter = createRateLimiter({
     refillPerMs: 0.002,
     now: () => Date.now(),
 })
-
-function clientIp(request: Request): string {
-    const forwarded = request.headers.get("x-forwarded-for")
-    return forwarded?.split(",")[0]?.trim() || "unknown"
-}
 
 export async function POST(request: Request): Promise<Response> {
     const db = getDb()

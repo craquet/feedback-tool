@@ -5,6 +5,8 @@ import {
   sendFeedbackNotification,
   buildFeedbackBody,
   buildTestBody,
+  deliverWebhook,
+  isBlockedWebhookUrl,
   type TeamsCardMessage,
 } from "./notify";
 
@@ -281,5 +283,60 @@ describe("webhook payload builders", () => {
     expect(teams.attachments[0].content.type).toBe("AdaptiveCard");
     expect(teams.attachments[0].contentType).toBe("application/vnd.microsoft.card.adaptive");
     expect(teams.attachments[0].content.summary).toBe("Test notification for App X");
+  });
+});
+
+describe("SSRF guard", () => {
+  it.each([
+    "http://localhost/hook",
+    "http://localhost.:3000/hook",
+    "https://app.localhost/hook",
+    "http://127.0.0.1/hook",
+    "http://127.8.8.8/hook",
+    "http://0x7f000001/hook",
+    "http://2130706433/hook",
+    "http://10.1.2.3/hook",
+    "http://172.16.0.9/hook",
+    "http://172.31.255.255/hook",
+    "http://192.168.1.1/hook",
+    "http://169.254.169.254/latest/meta-data/",
+    "http://100.64.0.1/hook",
+    "http://[::1]/hook",
+    "http://[fe80::1]/hook",
+    "http://[fd00::1]/hook",
+    "http://[::ffff:127.0.0.1]/hook",
+    "http://[::ffff:7f00:1]/hook",
+    "http://[::ffff:10.0.0.1]/hook",
+    "http://metadata.google.internal/hook",
+    "http://service.internal/hook",
+    "file:///etc/passwd",
+    "gopher://example.com/hook",
+    "not a url",
+  ])("blocks %s", (url) => {
+    expect(isBlockedWebhookUrl(url)).toBe(true);
+  });
+
+  it.each([
+    "https://hooks.example.com/team",
+    "http://hooks.example.com/team",
+    "https://8.8.8.8/hook",
+    "https://[2606:4700::1]/hook",
+  ])("allows %s", (url) => {
+    expect(isBlockedWebhookUrl(url)).toBe(false);
+  });
+
+  it("makes deliverWebhook refuse blocked URLs without fetching", async () => {
+    const fetchImpl = vi.fn();
+
+    const outcome = await deliverWebhook(
+      "http://169.254.169.254/latest/meta-data/",
+      "{}",
+      fetchImpl as unknown as typeof fetch,
+    );
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome.responseStatus).toBeNull();
+    expect(outcome.error).toContain("blocked host");
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

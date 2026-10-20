@@ -2,6 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react"
 import { getServiceBySlug } from "@/lib/queries"
+import { requireAdmin } from "@/lib/session"
 import { getDb } from "@/db/client"
 import { SettingsForm } from "@/components/SettingsForm"
 import { DeleteServiceButton } from "@/components/DeleteServiceButton"
@@ -22,6 +23,8 @@ export default async function ServiceSettingsPage({
 }: {
     params: Promise<{ slug: string }>
 }) {
+    await requireAdmin()
+
     const { slug } = await params
     const service = getServiceBySlug(getDb(), slug)
     if (!service) {

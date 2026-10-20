@@ -8,6 +8,7 @@ import {
     MailOpenIcon,
 } from "lucide-react"
 import { FeedbackRow, getFeedback } from "@/lib/queries"
+import { requireAdmin } from "@/lib/session"
 import { getDb } from "@/db/client"
 import { formatDateTime } from "@/lib/format"
 import { setFeedbackStatusAction } from "@/app/admin/actions"
@@ -61,6 +62,8 @@ export default async function FeedbackDetailPage({
 }: {
     params: Promise<{ slug: string; id: string }>
 }) {
+    await requireAdmin()
+
     const { slug, id } = await params
     const feedbackId = Number(id)
     const entry = Number.isInteger(feedbackId)

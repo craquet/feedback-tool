@@ -3,6 +3,9 @@ import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth";
 
 const LOGIN_PATH = "/admin/login";
 
+// Endpoints under /api/admin that must remain reachable without a session.
+const PUBLIC_API_PATHS = new Set(["/api/admin/login", "/api/admin/logout"]);
+
 export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
 
@@ -15,7 +18,13 @@ export function proxy(request: NextRequest): NextResponse {
     return response;
   }
 
-  if (!pathname.startsWith("/admin") || pathname === LOGIN_PATH) {
+  const isPage = pathname.startsWith("/admin") && pathname !== LOGIN_PATH;
+  const isApi =
+    pathname.startsWith("/api/admin") && !PUBLIC_API_PATHS.has(pathname);
+
+  // Optimistic pre-filter only — every admin page and route handler still
+  // verifies the session itself (requireAdmin / isSessionValid).
+  if (!isPage && !isApi) {
     return NextResponse.next();
   }
 
@@ -27,12 +36,20 @@ export function proxy(request: NextRequest): NextResponse {
     verifySessionToken(token, { secret, now: () => Date.now() });
 
   if (authenticated) {
+    if (isApi) {
+      return NextResponse.next();
+    }
     const response = NextResponse.next();
     response.headers.set(
       "content-security-policy",
       "frame-ancestors 'none'",
     );
     return response;
+  }
+
+  if (isApi) {
+    // API clients expect JSON, not an HTML login redirect.
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const loginUrl = new URL(LOGIN_PATH, request.url);
@@ -42,5 +59,5 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/embed"],
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/embed"],
 };

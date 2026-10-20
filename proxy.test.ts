@@ -77,4 +77,31 @@ describe("proxy", () => {
 
     expect(response.status).not.toBe(307);
   });
+
+  it("returns 401 JSON for unauthenticated admin API routes", () => {
+    const response = proxy(adminRequest("/api/admin/services/1/export"));
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("content-type")).toContain("application/json");
+  });
+
+  it("lets authenticated admin API routes through", () => {
+    const response = proxy(
+      adminRequest("/api/admin/feedback/1/screenshot", validToken()),
+    );
+
+    expect(response.status).not.toBe(401);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("keeps the login and logout API routes public", () => {
+    expect(proxy(adminRequest("/api/admin/login")).status).not.toBe(401);
+    expect(proxy(adminRequest("/api/admin/logout")).status).not.toBe(401);
+  });
+
+  it("still leaves non-admin API routes untouched", () => {
+    const response = proxy(adminRequest("/api/feedback"));
+
+    expect(response.status).not.toBe(401);
+  });
 });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { isSessionValid } from "@/lib/auth"
-import { buildTestBody, deliverWebhook } from "@/lib/notify"
+import { buildTestBody, deliverWebhook, isBlockedWebhookUrl } from "@/lib/notify"
 import { getDb } from "@/db/client"
 import { services } from "@/db/schema"
 
@@ -36,6 +36,15 @@ export async function POST(
     if (typeof webhookUrl !== "string" || !/^https?:\/\//.test(webhookUrl)) {
         return NextResponse.json(
             { error: "A valid http(s) webhook URL is required" },
+            { status: 400 },
+        )
+    }
+    if (isBlockedWebhookUrl(webhookUrl)) {
+        return NextResponse.json(
+            {
+                error:
+                    "This URL points to a private or internal host and cannot be used as a webhook",
+            },
             { status: 400 },
         )
     }

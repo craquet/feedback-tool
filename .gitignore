@@ -39,6 +39,7 @@ yarn-error.log*
 # feedback service runtime data
 /data/
 /screenshots/
+/screenshots/
 
 # typescript
 *.tsbuildinfo

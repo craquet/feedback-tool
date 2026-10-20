@@ -1,6 +1,118 @@
 import type { AppDb } from "../db/client";
 import { notificationLog, type WebhookFormat } from "../db/schema";
 
+// --- SSRF guard -------------------------------------------------------------
+// Webhook URLs are admin-supplied, but the request is made from the server, so
+// a crafted URL could reach internal services (cloud metadata, localhost, the
+// admin UI itself). Block non-http(s) schemes, internal hostnames, and
+// private/reserved IP literals. DNS is not resolved here, so rebinding via a
+// public hostname remains a residual risk for high-threat deployments.
+
+const BLOCKED_HOSTNAMES = new Set(["localhost", "metadata.google.internal"]);
+
+const BLOCKED_HOSTNAME_SUFFIXES = [".localhost", ".local", ".internal"];
+
+function parseIPv4(value: string): number[] | null {
+  const parts = value.split(".");
+  if (parts.length !== 4) {
+    return null;
+  }
+  const octets: number[] = [];
+  for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part)) {
+      return null;
+    }
+    const octet = Number(part);
+    if (octet > 255) {
+      return null;
+    }
+    octets.push(octet);
+  }
+  return octets;
+}
+
+function isPrivateIPv4(octets: number[]): boolean {
+  const [a, b] = octets;
+  return (
+    a === 0 || // 0.0.0.0/8
+    a === 10 || // 10.0.0.0/8 private
+    (a === 100 && b >= 64 && b <= 127) || // 100.64.0.0/10 CGNAT
+    a === 127 || // loopback
+    (a === 169 && b === 254) || // link-local, incl. cloud metadata
+    (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12 private
+    (a === 192 && b === 168) || // 192.168.0.0/16 private
+    a >= 224 // multicast and reserved
+  );
+}
+
+function isPrivateIPv6(address: string): boolean {
+  if (address === "::" || address === "::1") {
+    return true;
+  }
+  // IPv4-mapped (::ffff:a.b.c.d or ::ffff:aabb:ccdd) and IPv4-compatible
+  // (::aabb:ccdd) forms: judge the embedded IPv4 address instead. The URL
+  // parser normalizes dotted IPv4 into hex hextets, so handle both shapes.
+  const dotted = address.match(/^::(?:ffff:)?(\d+\.\d+\.\d+\.\d+)$/i);
+  const hex = address.match(/^::(?:ffff:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (dotted) {
+    const octets = parseIPv4(dotted[1]);
+    return octets === null || isPrivateIPv4(octets);
+  }
+  if (hex) {
+    const hi = parseInt(hex[1], 16);
+    const lo = parseInt(hex[2], 16);
+    return isPrivateIPv4([hi >> 8, hi & 0xff, lo >> 8, lo & 0xff]);
+  }
+  const firstHextet = address.split(":")[0] ?? "";
+  if (firstHextet.length >= 2) {
+    const lead = parseInt(firstHextet.slice(0, 2), 16);
+    if (Number.isNaN(lead)) {
+      return false;
+    }
+    if (lead === 0xfc || lead === 0xfd) {
+      return true; // fc00::/7 unique local
+    }
+    if (lead === 0xfe) {
+      const second = parseInt(firstHextet.slice(2, 4) || "0", 16);
+      return second >= 0x80 && second <= 0xbf; // fe80::/10 link-local
+    }
+    if (lead === 0xff) {
+      return true; // ff00::/8 multicast
+    }
+  }
+  return false;
+}
+
+export function isBlockedWebhookUrl(rawUrl: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return true;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return true;
+  }
+  // WHATWG URL parsing already normalizes hex/octal/decimal IP forms
+  // (e.g. http://0x7f000001/ becomes 127.0.0.1) before we inspect them.
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (BLOCKED_HOSTNAMES.has(hostname)) {
+    return true;
+  }
+  if (BLOCKED_HOSTNAME_SUFFIXES.some((suffix) => hostname.endsWith(suffix))) {
+    return true;
+  }
+  const bare = hostname.replace(/^\[|\]$/g, "");
+  const octets = parseIPv4(bare);
+  if (octets) {
+    return isPrivateIPv4(octets);
+  }
+  if (bare.includes(":")) {
+    return isPrivateIPv6(bare);
+  }
+  return false;
+}
+
 export interface FeedbackNotificationPayload {
   id: number;
   message: string;
@@ -165,6 +277,13 @@ export async function deliverWebhook(
   body: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<WebhookOutcome> {
+  if (isBlockedWebhookUrl(url)) {
+    return {
+      ok: false,
+      responseStatus: null,
+      error: "Webhook URL points to a blocked host",
+    };
+  }
   try {
     const response = await fetchImpl(url, {
       method: "POST",

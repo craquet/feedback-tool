@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import type { FeedbackStatus } from "@/db/schema"
 import { getServiceBySlug, listFeedback } from "@/lib/queries"
+import { requireAdmin } from "@/lib/session"
 import { getDb } from "@/db/client"
 import { formatDateTime } from "@/lib/format"
 import { BulkFeedbackList } from "@/components/BulkFeedbackList"
@@ -38,6 +39,8 @@ export default async function InboxPage({
     params: Promise<{ slug: string }>
     searchParams: Promise<{ status?: string; page?: string }>
 }) {
+    await requireAdmin()
+
     const { slug } = await params
     const service = getServiceBySlug(getDb(), slug)
     if (!service) {

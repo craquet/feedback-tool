@@ -46,4 +46,22 @@ describe("POST /api/admin/login", () => {
 
         expect(response.status).toBe(400)
     })
+
+    it("rate-limits repeated failed attempts per client", async () => {
+        const headers = { "x-real-ip": "203.0.113.9" }
+
+        let lastStatus = 0
+        for (let i = 0; i < 11; i++) {
+            const response = await POST(
+                new Request("http://localhost/api/admin/login", {
+                    method: "POST",
+                    headers: { "content-type": "application/json", ...headers },
+                    body: JSON.stringify({ password: "wrong" }),
+                }),
+            )
+            lastStatus = response.status
+        }
+
+        expect(lastStatus).toBe(429)
+    })
 })
