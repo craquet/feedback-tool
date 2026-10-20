@@ -11,7 +11,12 @@ export const metadata = {
     title: "Sign in — Feedback Admin",
 }
 
-export default function AdminLoginPage() {
+export default async function AdminLoginPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ error?: string }>
+}) {
+    const { error } = await searchParams
     return (
         <main className="flex min-h-screen items-center justify-center p-4">
             <Card className="w-full max-w-sm">
@@ -22,7 +27,7 @@ export default function AdminLoginPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <LoginForm />
+                    <LoginForm initialError={error ?? null} />
                 </CardContent>
             </Card>
         </main>

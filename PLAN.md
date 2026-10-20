@@ -8,7 +8,8 @@ per-service grouping, admin dashboard, webhook notifications.
 - **Database**: SQLite + Drizzle ORM (`better-sqlite3`), DB file at `./data/feedback.db`
 - **Screenshot storage**: local filesystem under `./screenshots/`, path referenced in DB
 - **Admin auth**: single password from env var, signed HttpOnly session cookie
-- **Deployment**: self-hosted Node server / Docker (filesystem + in-memory rate limiting OK)
+- **Deployment**: self-hosted Node server / Docker (filesystem + in-memory rate limiting OK),
+  optional `NEXT_PUBLIC_BASE_PATH` sub-path baked in at build time
 
 ## Stack
 

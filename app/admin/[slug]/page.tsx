@@ -13,6 +13,7 @@ import { getServiceBySlug, listFeedback } from "@/lib/queries"
 import { requireAdmin } from "@/lib/session"
 import { getDb } from "@/db/client"
 import { formatDateTime } from "@/lib/format"
+import { withBasePath } from "@/lib/base-path"
 import { BulkFeedbackList } from "@/components/BulkFeedbackList"
 import { Button } from "@/components/ui/button"
 import {
@@ -88,7 +89,9 @@ export default async function InboxPage({
                         nativeButton={false}
                         render={
                             <a
-                                href={`/api/admin/services/${service.id}/export`}
+                                href={withBasePath(
+                                    `/api/admin/services/${service.id}/export`,
+                                )}
                             />
                         }
                     >

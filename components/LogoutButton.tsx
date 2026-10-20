@@ -4,6 +4,7 @@ import { LogOutIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { withBasePath } from "@/lib/base-path"
 
 export function LogoutButton() {
     const router = useRouter()
@@ -11,7 +12,7 @@ export function LogoutButton() {
 
     async function handleLogout() {
         setSubmitting(true)
-        await fetch("/api/admin/logout", { method: "POST" })
+        await fetch(withBasePath("/api/admin/logout"), { method: "POST" })
         router.push("/admin/login")
         router.refresh()
     }

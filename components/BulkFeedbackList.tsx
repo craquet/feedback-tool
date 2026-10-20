@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { bulkFeedbackAction } from "@/app/admin/actions"
 import { DeleteFeedbackButton } from "@/components/DeleteFeedbackButton"
+import { withBasePath } from "@/lib/base-path"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -85,9 +86,11 @@ export function BulkFeedbackList({
         // Full page navigation (not router.push) so the browser treats the
         // response as a download via Content-Disposition.
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.href = `/api/admin/services/${serviceId}/export?ids=${[
-            ...selected,
-        ].join(",")}`
+        window.location.href = withBasePath(
+            `/api/admin/services/${serviceId}/export?ids=${[...selected].join(
+                ",",
+            )}`,
+        )
     }
 
     return (

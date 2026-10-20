@@ -6,6 +6,9 @@ RUN npm ci
 
 FROM deps AS build
 WORKDIR /app
+# Baked into the client bundle at build time; change requires a rebuild.
+ARG NEXT_PUBLIC_BASE_PATH=""
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

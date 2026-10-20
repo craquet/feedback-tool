@@ -15,39 +15,66 @@ const limiter = createRateLimiter({
     now: () => Date.now(),
 })
 
+const LOGIN_PATH = "/admin/login"
+
+function isFormPost(request: Request): boolean {
+    const contentType = request.headers.get("content-type") ?? ""
+    return (
+        contentType.includes("application/x-www-form-urlencoded") ||
+        contentType.includes("multipart/form-data")
+    )
+}
+
 export async function POST(request: Request): Promise<Response> {
+    const formPost = isFormPost(request)
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ""
+    const redirectTo = (path: string, params?: Record<string, string>) => {
+        const query = params ? `?${new URLSearchParams(params)}` : ""
+        return new URL(`${basePath}${path}${query}`, request.url)
+    }
+
+    const fail = (message: string, status: number): Response => {
+        if (formPost) {
+            // Native, pre-hydration submit: send the user back to the form with
+            // an error instead of returning raw JSON.
+            return NextResponse.redirect(
+                redirectTo(LOGIN_PATH, { error: message }),
+                303,
+            )
+        }
+        return NextResponse.json({ error: message }, { status })
+    }
+
     if (!limiter.allow(clientIp(request))) {
-        return NextResponse.json(
-            { error: "Too many login attempts. Please try again later." },
-            { status: 429 },
-        )
+        return fail("Too many login attempts. Please try again later.", 429)
     }
 
     const password = process.env.ADMIN_PASSWORD
     const secret = process.env.ADMIN_SESSION_SECRET
     if (!password || !secret) {
-        return NextResponse.json(
-            { error: "Admin auth is not configured" },
-            { status: 500 },
-        )
+        return fail("Admin auth is not configured", 500)
     }
 
-    let body: unknown
-    try {
-        body = await request.json()
-    } catch {
-        return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    let provided: unknown
+    if (formPost) {
+        const form = await request.formData().catch(() => null)
+        provided = form?.get("password")
+    } else {
+        let body: unknown
+        try {
+            body = await request.json()
+        } catch {
+            return fail("Invalid request", 400)
+        }
+        provided = (body ?? {}) && (body as { password?: unknown }).password
     }
-    const { password: provided } = (body ?? {}) as { password?: unknown }
+
     if (typeof provided !== "string") {
-        return NextResponse.json(
-            { error: "Password is required" },
-            { status: 400 },
-        )
+        return fail("Password is required", 400)
     }
 
     if (!verifyAdminPassword(provided, password)) {
-        return NextResponse.json({ error: "Wrong password" }, { status: 401 })
+        return fail("Wrong password", 401)
     }
 
     const token = createSessionToken({
@@ -55,12 +82,17 @@ export async function POST(request: Request): Promise<Response> {
         ttlMs: SESSION_TTL_MS,
         now: () => Date.now(),
     })
-    const response = NextResponse.json({ ok: true })
+    const response = formPost
+        ? NextResponse.redirect(redirectTo("/admin"), 303)
+        : NextResponse.json({ ok: true })
     response.cookies.set({
         name: SESSION_COOKIE_NAME,
         value: token,
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        // Only mark the cookie Secure when the request actually arrived over
+        // HTTPS. Otherwise browsers silently drop it over plain HTTP and the
+        // user is bounced back to the login page.
+        secure: request.headers.get("x-forwarded-proto") === "https",
         sameSite: "lax",
         path: "/",
         maxAge: Math.floor(SESSION_TTL_MS / 1000),

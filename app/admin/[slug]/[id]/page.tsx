@@ -11,6 +11,7 @@ import { FeedbackRow, getFeedback } from "@/lib/queries"
 import { requireAdmin } from "@/lib/session"
 import { getDb } from "@/db/client"
 import { formatDateTime } from "@/lib/format"
+import { withBasePath } from "@/lib/base-path"
 import { setFeedbackStatusAction } from "@/app/admin/actions"
 import { DeleteFeedbackButton } from "@/components/DeleteFeedbackButton"
 import { Badge } from "@/components/ui/badge"
@@ -157,7 +158,9 @@ export default async function FeedbackDetailPage({
                         </p>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                            src={`/api/admin/feedback/${feedback.id}/screenshot`}
+                            src={withBasePath(
+                                `/api/admin/feedback/${feedback.id}/screenshot`,
+                            )}
                             alt="Attached screenshot"
                             className="border-border max-h-96 rounded-lg border"
                         />

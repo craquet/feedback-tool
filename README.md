@@ -46,7 +46,24 @@ the dashboard at `/admin` (you will be asked for `ADMIN_PASSWORD`).
 | `SCREENSHOTS_DIR` | Where uploaded screenshots are stored (default `screenshots/`) |
 | `ADMIN_PASSWORD` | Password for the admin dashboard (required) |
 | `ADMIN_SESSION_SECRET` | Random string used to sign admin session cookies (required) |
-| `ADMIN_BASE_URL` | Public base URL, used for links inside webhook payloads and in the embed snippet |
+| `ADMIN_BASE_URL` | Public base URL, used for links inside webhook payloads and in the embed snippet. Include the base path here if you set one (e.g. `https://feedback.example.com/feedback`) |
+| `NEXT_PUBLIC_BASE_PATH` | Optional sub-path to serve the app under (e.g. `/feedback`). Empty/omitted for the domain root. Must be set at build time |
+
+## Deploying under a sub-path
+
+Set `NEXT_PUBLIC_BASE_PATH` (for example `/feedback`) and rebuild. The value is
+baked into the client bundle at build time, so changing it requires a rebuild
+(not just a restart). `next/link` hrefs, `router.push`, server `redirect()` and
+static assets are prefixed automatically; client-side `fetch()` calls and raw
+`<a href>` values use the `withBasePath` helper from `lib/base-path.ts`.
+
+Also set `ADMIN_BASE_URL` to the full public URL *including* the base path, so
+webhook links and the embed snippet point at the right place. With Docker, pass
+the value as a build arg or environment variable at build time:
+
+```sh
+NEXT_PUBLIC_BASE_PATH=/feedback docker compose build
+```
 
 ## Embedding
 
