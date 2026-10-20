@@ -25,10 +25,10 @@ import {
 const PAGE_SIZE = 20
 
 const TABS: Array<{ value: FeedbackStatus | "all"; label: string }> = [
-    { value: "all", label: "All" },
-    { value: "new", label: "New" },
+    { value: "new", label: "Unread" },
     { value: "read", label: "Read" },
     { value: "archived", label: "Archived" },
+    { value: "all", label: "All" },
 ]
 
 export default async function InboxPage({
@@ -47,7 +47,7 @@ export default async function InboxPage({
     const { status: statusParam, page: pageParam } = await searchParams
     const status = TABS.some((t) => t.value === statusParam)
         ? (statusParam as FeedbackStatus | "all")
-        : "all"
+        : "new"
     const page = Math.max(1, Number(pageParam ?? "1") || 1)
 
     const filter = status === "all" ? undefined : status
@@ -117,7 +117,7 @@ export default async function InboxPage({
                 {TABS.map((tab) => {
                     const active = tab.value === status
                     const href =
-                        tab.value === "all"
+                        tab.value === "new"
                             ? base
                             : `${base}?status=${tab.value}`
                     return (

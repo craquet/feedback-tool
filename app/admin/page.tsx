@@ -63,7 +63,7 @@ export default function AdminOverviewPage() {
                                     <CardTitle className="flex items-center justify-between gap-2">
                                         {service.name}
                                         {unread > 0 ? (
-                                            <Badge>{unread} new</Badge>
+                                            <Badge>{unread} unread</Badge>
                                         ) : null}
                                     </CardTitle>
                                     <CardDescription>
