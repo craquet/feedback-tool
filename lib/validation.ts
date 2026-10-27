@@ -22,11 +22,49 @@ const pageUrlSchema = z
     "pageUrl must be an http(s) URL",
   );
 
-export const feedbackInputSchema = z.object({
-  message: z.string().trim().min(1, "Message is required").max(5000),
-  email: emailSchema,
-  pageUrl: pageUrlSchema,
-});
+const ratingSchema = z
+  .union([z.string(), z.number()])
+  .optional()
+  .transform((v) => {
+    if (v === undefined || v === null || v === "") {
+      return undefined;
+    }
+    if (typeof v === "number") {
+      return v;
+    }
+    const n = Number(v);
+    return Number.isNaN(n) ? undefined : n;
+  })
+  .refine((v) => v === undefined || (Number.isInteger(v) && v >= 1 && v <= 5), {
+    message: "Rating must be between 1 and 5",
+  });
+
+export const feedbackInputSchema = z
+  .object({
+    message: z.string().trim().optional(),
+    email: emailSchema,
+    pageUrl: pageUrlSchema,
+    rating: ratingSchema,
+  })
+  .superRefine((data, ctx) => {
+    const hasMessage =
+      typeof data.message === "string" && data.message.trim().length > 0;
+    if (!hasMessage && data.rating === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Message is required",
+        path: ["message"],
+      });
+      return;
+    }
+    if (typeof data.message === "string" && data.message.length > 5000) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Message must be at most 5000 characters",
+        path: ["message"],
+      });
+    }
+  });
 
 export type FeedbackInput = z.infer<typeof feedbackInputSchema>;
 

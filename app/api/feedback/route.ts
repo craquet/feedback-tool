@@ -65,6 +65,7 @@ export async function POST(request: Request): Promise<Response> {
         message: form.get("message"),
         email: form.get("email") ?? undefined,
         pageUrl: form.get("pageUrl") ?? undefined,
+        rating: form.get("rating") ?? undefined,
     })
     if (!parsed.success) {
         return NextResponse.json({ error: parsed.error }, { status: 400 })
@@ -90,11 +91,17 @@ export async function POST(request: Request): Promise<Response> {
         screenshotPath = result.path
     }
 
+    let message = parsed.data.message ?? ""
+    if (parsed.data.rating !== undefined) {
+        const ratingText = `Rating: ${parsed.data.rating}/5 stars`
+        message = message ? `${ratingText}\n\n${message}` : ratingText
+    }
+
     const inserted = db
         .insert(feedback)
         .values({
             serviceId: service.id,
-            message: parsed.data.message,
+            message,
             email: parsed.data.email ?? null,
             pageUrl: parsed.data.pageUrl ?? null,
             screenshotPath,

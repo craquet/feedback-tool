@@ -10,9 +10,9 @@ export const metadata = {
 export default async function EmbedPage({
     searchParams,
 }: {
-    searchParams: Promise<{ k?: string }>
+    searchParams: Promise<{ k?: string; type?: string; stars?: string }>
 }) {
-    const { k } = await searchParams
+    const { k, type, stars } = await searchParams
     const service = k
         ? getDb()
               .select()
@@ -20,6 +20,9 @@ export default async function EmbedPage({
               .where(eq(services.embedKey, k))
               .all()[0]
         : undefined
+
+    const initialStars =
+        stars && /^[1-5]$/.test(stars) ? Number(stars) : undefined
 
     if (!service) {
         return (
@@ -36,6 +39,8 @@ export default async function EmbedPage({
                     embedKey={service.embedKey}
                     acceptingReports={service.acceptingReports}
                     acceptingScreenshots={service.acceptingScreenshots}
+                    type={type === "rating" || type === "stars" ? "rating" : "default"}
+                    initialStars={initialStars}
                 />
             </main>
         </div>

@@ -79,8 +79,46 @@ export default async function ServiceSettingsPage({
                         of {service.name}.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col gap-4">
                     <EmbedSnippets embedUrl={embedUrl} />
+                    <div className="flex flex-col gap-2 rounded-lg border p-3 text-sm">
+                        <p className="font-medium">Rating modal</p>
+                        <p className="text-muted-foreground">
+                            Use a star rating flow by adding query parameters to
+                            the embed URL:
+                        </p>
+                        <ul className="text-muted-foreground list-disc space-y-1 pl-5">
+                            <li>
+                                <code className="rounded bg-muted px-1 py-0.5">
+                                    &type=rating
+                                </code>{" "}
+                                – Show a 5-star picker first. After selecting
+                                stars, the email, message (optional), and
+                                screenshot fields appear.
+                            </li>
+                            <li>
+                                <code className="rounded bg-muted px-1 py-0.5">
+                                    &stars=1-5
+                                </code>{" "}
+                                – Preselect a star rating (works with or without{" "}
+                                <code className="rounded bg-muted px-1 py-0.5">
+                                    type=rating
+                                </code>
+                                ). Users can still send with just the stars.
+                            </li>
+                        </ul>
+                        <p className="text-muted-foreground">
+                            Example:{" "}
+                            <code className="rounded bg-muted px-1 py-0.5 break-all">
+                                {embedUrl}&type=rating&stars=4
+                            </code>
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                            When only stars are submitted, the rating is
+                            automatically added to the feedback message so it
+                            stays compatible with the existing database schema.
+                        </p>
+                    </div>
                 </CardContent>
             </Card>
 
